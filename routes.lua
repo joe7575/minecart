@@ -25,7 +25,7 @@ function minecart.start_teach_in(self, pos, vel, puncher)
 	if puncher:get_player_name() == self.driver and vector.equals(vel, {x=0, y=0, z=0}) then
 		self.start_key = get_route_key(pos)
 		if self.start_key then
-			print("Start teaching "..self.start_key)
+			--print("Start teaching "..self.start_key)
 			CartsOnRail[self.myID] = {start_key = self.start_key}
 			self.teach_in = true
 			minecart.new_route(self.start_key)
@@ -36,23 +36,21 @@ end
 
 
 function minecart.store_next_waypoint(self, pos, vel)	
---	if self.myID and not vector.equals(vel, {x=0, y=0, z=0}) then
---		print("Cart "..self.myID.." running at "..S(vector.round(pos)))
---	end
-	if self.teach_in and self.driver and self.next_time < minetest.get_us_time() then
+	if self.start_key and self.teach_in and self.driver and 
+			self.next_time < minetest.get_us_time() then
 		self.next_time = minetest.get_us_time() + 1000000
 		local route = minecart.get_route(self.start_key)
 		route[#route+1] = {S(vector.round(pos)), S(vector.round(vel))}
-		print("Waypoint "..S(vector.round(pos)).." added")
+		--print("Waypoint "..S(vector.round(pos)).." added")
 		
 		if vector.equals(vel, {x=0, y=0, z=0}) then
 			self.teach_in = false
 			minecart.store_route(self.start_key)
-			print("stored")
+			--print("stored")
 			CartsOnRail[self.myID] = nil
 		end
 	elseif self.teach_in and not self.driver then
-		print("lost driver")
+		--print("lost driver")
 		self.teach_in = false
 	end
 end
@@ -61,6 +59,7 @@ end
 -- Run
 --
 local function remove_cart(self, pos)
+	-- no buffer around?
 	if not get_route_key(pos) then
 		CartsOnRail[self.myID] = nil
 		print("cart "..self.myID.." removed")
@@ -71,9 +70,11 @@ end
 function minecart.on_activate(self, dtime_s)
 	self.myID = get_object_id(self.object)
 	local pos = self.object:get_pos()
+	local vel = vector.round(self.object:get_velocity())
 	print("Cart "..self.myID.." activated at "..S(vector.round(pos)))
 
-	if not self.driver and dtime_s > 2 then -- cart was unloaded?
+	if not self.driver and dtime_s > 2 and  -- cart was unloaded?
+			not vector.equals(vel, {x=0, y=0, z=0}) then  -- cart not stand still?
 		-- wait a second until the world is loaded
 		minetest.after(1, remove_cart, self, pos)
 	end
@@ -85,8 +86,11 @@ function minecart.start_run(self, pos, vel)
 			start_time = minetest.get_gametime(), 
 			start_key = get_route_key(pos),
 			start_pos = pos,
+			curr_pos = pos,
 		}
 		print("Cart "..self.myID.." started")
+	else
+		CartsOnRail[self.myID].curr_pos = pos
 	end
 end
 
@@ -98,40 +102,15 @@ function minecart.stopped(self, pos)
 	if self.attached_items then
 		for _,item in ipairs(self.attached_items) do
 			minetest.add_item(pos, item)
-			print(item:get_name())
+			--print(item:get_name())
 		end
 		self.attached_items = {}
 	end
 end
 
 function minecart.on_dig(self)
-	print("Cart "..self.myID.." dug")
 	CartsOnRail[self.myID] = nil
 end
-
-minetest.register_node("minecart:buffer", {
-	description = "buffer",
-	tiles = {
-		'default_junglewood.png',
-		'default_junglewood.png',
-		'default_junglewood.png',
-		'default_junglewood.png',
-		'default_junglewood.png',
-		'default_junglewood.png^minecart_buffer.png',
-		},
-	after_place_node = function(pos)
-		minecart.del_route(S(pos))
-	end,
-	after_dig_node = function(pos)
-		minecart.del_route(S(pos))
-	end,
-	sunlight_propagates = true,
-	paramtype2 = "facedir",
-	groups = {cracky=2, crumbly=2, choppy=2},
-	is_ground_content = false,
-	sounds = default.node_sound_wood_defaults(),
-})
-
 
 local function monitoring()
 	local tbl = {}
@@ -139,10 +118,10 @@ local function monitoring()
 		if item.start_time then
 			local t = minetest.get_gametime() - item.start_time
 			local entity = minetest.luaentities[key]
-			if entity then
+			if entity and item.start_key then
 				-- Cart in loaded area
-				local spos = S(vector.round(entity.old_pos))
-				print("cart "..key.." running since "..t.." at "..spos)
+				--local spos = S(vector.round(entity.old_pos))
+				--print("cart "..key.." running since "..t.." at "..spos)
 				if not item.attached_items then
 					item.attached_items = table.copy(entity.attached_items)
 				end
@@ -150,7 +129,7 @@ local function monitoring()
 				local data = route[t+1]
 				if data then
 					local pos = minetest.string_to_pos(data[1])
-					if not minetest.get_node_or_nil(pos) then
+					if pos and not minetest.get_node_or_nil(pos) then
 						-- Cart will reach an unloaded area
 						print("cart "..key.." removed")
 						entity.object:remove()
@@ -163,13 +142,10 @@ local function monitoring()
 					local route = minecart.get_route(item.start_key)
 					local data = route[t]
 					if data then
-						if not item.cart_removed then
+						if not item.cart_removed and item.curr_pos then
 							-- load area so that the cart will be removed
-							local pos = minetest.string_to_pos(data[1])
-							if pos then
-								minetest.load_area(pos)
-								print("area loaded")
-							end
+							minetest.emerge_area(item.curr_pos, item.curr_pos, nil, {})
+							print("area loaded")
 						end
 						print("cart "..key.." should be at "..data[1])
 						local pos = minetest.string_to_pos(data[1])
@@ -184,7 +160,6 @@ local function monitoring()
 							end
 							print("New cart "..id.." spawned")
 							tbl[id] = table.copy(CartsOnRail[key])
-							--print("cart "..key.." removed from CartsOnRail")
 							CartsOnRail[key] = nil
 						end
 					else
@@ -196,7 +171,6 @@ local function monitoring()
 		end
 	end
 	for key,val in pairs(tbl) do
-		--print("cart "..key.." in CartsOnRail added")
 		CartsOnRail[key] = val
 	end
 	minetest.after(1, monitoring)
@@ -210,8 +184,6 @@ minetest.register_on_shutdown(function()
 		if entity and item.start_pos then
 			entity.object:set_pos(item.start_pos)
 			entity.object:set_velocity({x=0, y=0, z=0})
-		else
-			print("pos is nil", item.start_pos)
 		end
 	end
 end)

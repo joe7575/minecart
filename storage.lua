@@ -3,7 +3,7 @@ local S = function(pos) if pos then return minetest.pos_to_string(pos) end end
 local storage = minetest.get_mod_storage()
 
 local function data_maintenance()
-	print("[MOD] minecart maintenance")
+	minetest.log("info", "[MOD] minecart maintenance")
 	local day_count = minetest.get_day_count()
 	local tbl = storage:to_table()
 	for key,s in pairs(tbl.fields) do

@@ -5,3 +5,6 @@ dofile(MP.."/storage.lua")
 dofile(MP.."/functions.lua")
 dofile(MP.."/routes.lua")
 dofile(MP.."/cart_entity.lua")
+dofile(MP.."/buffer.lua")
+
+minetest.log("info", "[MOD] Minecart loaded")

@@ -144,7 +144,13 @@ function cart_entity:on_punch(puncher, time_from_last_punch, tool_capabilities, 
 	time_from_last_punch = math.min(time_from_last_punch or punch_interval, punch_interval)
 	local f = 2 * (time_from_last_punch / punch_interval)
 
-	self.velocity = vector.multiply(cart_dir, f)
+	------------------------------------ changed
+	if vector.equals(vel, {x=0, y=0, z=0}) then
+		self.velocity = vector.multiply(cart_dir, f)
+	else
+		self.velocity = {x=0, y=0, z=0}
+	end
+	------------------------------------ changed
 	self.old_dir = cart_dir
 	self.punched = true
 end
@@ -343,7 +349,7 @@ local function rail_on_step(self, dtime)
 		for _, obj_ in pairs(minetest.get_objects_inside_radius(pos, 1)) do
 			------------------------------- changed
 			local entity = obj_:get_luaentity()
-			if not obj_:is_player() and	entity and 
+			if not obj_:is_player() and entity and 
 					not entity.physical_state and entity.name == "__builtin:item" then
 				obj_:remove()
 				local item = ItemStack(entity.itemstring)
@@ -442,7 +448,7 @@ minetest.register_craftitem("minecart:cart", {
 minetest.register_craft({
 	output = "minecart:cart",
 	recipe = {
-		{"default:steel_ingot", "default:dirt", "default:steel_ingot"},
+		{"default:steel_ingot", "default:cobble", "default:steel_ingot"},
 		{"default:steel_ingot", "default:steel_ingot", "default:steel_ingot"},
 	},
 })
