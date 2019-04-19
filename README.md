@@ -26,8 +26,8 @@ license).
 [3] https://github.com/stujones11/railcart/
 
 
-Features
-----------
+Original Features
+-----------------
 - A fast cart for your railway or roller coaster (up to 7 m/s!)
 - Boost and brake rails
 - Rail junction switching with the 'right-left' walking keys
@@ -43,3 +43,14 @@ New Features
   runs as usual.
 - To store a route, a player has to place rail buffer on both ends,
   and use the minecart to ride the route in both directions.
+
+Usage
+-----
+The main use of the minecart is for item transport from mines,
+ideally by means of an automation mod like Signs Bot.
+https://github.com/joe7575/signs_bot
+
+History
+-------
+
+2018-04-19  v0.01  first commit
