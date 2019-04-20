@@ -6,6 +6,7 @@ local cart_entity = {
 		mesh = "carts_cart.b3d",
 		visual_size = {x=1, y=1},
 		textures = {"carts_cart.png^minecart_cart.png"},
+		static_save = false,
 	},
 
 	driver = nil,

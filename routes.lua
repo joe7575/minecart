@@ -36,6 +36,9 @@ end
 
 
 function minecart.store_next_waypoint(self, pos, vel)	
+	if CartsOnRail[self.myID] then
+		CartsOnRail[self.myID].curr_pos = pos
+	end
 	if self.start_key and self.teach_in and self.driver and 
 			self.next_time < minetest.get_us_time() then
 		self.next_time = minetest.get_us_time() + 1000000
@@ -71,12 +74,13 @@ function minecart.on_activate(self, dtime_s)
 	self.myID = get_object_id(self.object)
 	local pos = self.object:get_pos()
 	local vel = vector.round(self.object:get_velocity())
-	print("Cart "..self.myID.." activated at "..S(vector.round(pos)))
+	minetest.log("warning", "Cart "..self.myID.." activated at "..S(vector.round(pos)))
 
 	if not self.driver and dtime_s > 2 and  -- cart was unloaded?
 			not vector.equals(vel, {x=0, y=0, z=0}) then  -- cart not stand still?
 		-- wait a second until the world is loaded
 		minetest.after(1, remove_cart, self, pos)
+		minetest.log("warning", "cart removed "..S(vector.round(pos)))
 	end
 end
 
@@ -112,6 +116,15 @@ function minecart.on_dig(self)
 	CartsOnRail[self.myID] = nil
 end
 
+local function load_area(item)
+	local curr_pos = vector.round(item.curr_pos)
+	minetest.emerge_area(curr_pos, curr_pos, 
+		function(blockpos, action, calls_remaining, param)
+			print("EmergeAreaCallback", S(blockpos), action, calls_remaining)
+		end, {})
+	minetest.log("warning", "area loaded "..S(curr_pos))
+end
+
 local function monitoring()
 	local tbl = {}
 	for key,item in pairs(CartsOnRail) do
@@ -144,8 +157,7 @@ local function monitoring()
 					if data then
 						if not item.cart_removed and item.curr_pos then
 							-- load area so that the cart will be removed
-							minetest.emerge_area(item.curr_pos, item.curr_pos, nil, {})
-							print("area loaded")
+							minetest.after(3, load_area, item)
 						end
 						print("cart "..key.." should be at "..data[1])
 						local pos = minetest.string_to_pos(data[1])
@@ -184,6 +196,8 @@ minetest.register_on_shutdown(function()
 		if entity and item.start_pos then
 			entity.object:set_pos(item.start_pos)
 			entity.object:set_velocity({x=0, y=0, z=0})
+		else
+			minetest.add_entity(item.start_pos, "minecart:cart", nil)
 		end
 	end
 end)
