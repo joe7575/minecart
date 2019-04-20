@@ -347,17 +347,9 @@ local function rail_on_step(self, dtime)
 
 	if self.punched then
 		-- Collect dropped items
-		for _, obj_ in pairs(minetest.get_objects_inside_radius(pos, 1)) do
-			------------------------------- changed
-			local entity = obj_:get_luaentity()
-			if not obj_:is_player() and entity and 
-					not entity.physical_state and entity.name == "__builtin:item" then
-				obj_:remove()
-				local item = ItemStack(entity.itemstring)
-				self.attached_items[#self.attached_items + 1] = item
-			------------------------------- changed
-			end
-		end
+		------------------------------- changed
+		minecart.store_loaded_items(self, pos)
+		------------------------------- changed
 		self.punched = false
 		update.vel = true
 	end

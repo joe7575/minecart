@@ -1,4 +1,5 @@
 local S = function(pos) if pos then return minetest.pos_to_string(pos) end end
+local DAYS_VALID = (30 * 72) -- 30 real days
 
 local storage = minetest.get_mod_storage()
 
@@ -18,13 +19,28 @@ local function data_maintenance()
 end
 minetest.after(1, data_maintenance)
 
+
+-- Store data of running carts
+minecart.CartsOnRail = {}
+
+for key,val in pairs(minetest.deserialize(storage:get_string("CartsOnRail")) or {}) do
+	-- use invalid keys to force the cart spawning
+	minecart.CartsOnRail[-key] = val
+end
+print("CartsOnRail", dump(minecart.CartsOnRail))
+
+minetest.register_on_shutdown(function()
+	data_maintenance()
+	print("CartsOnRail", dump(minecart.CartsOnRail))
+	storage:set_string("CartsOnRail", minetest.serialize(minecart.CartsOnRail))
+end)
+
+
 --Routes = {
 --	spos = {data = {spos, spos, spos}, best_before = ...},
 --	spos = {data = {spos, spos, spos}, best_before = ...},
 --}
 local Routes = {}
-
-local DAYS_VALID = (30 * 72) -- 30 real days
 
 function minecart.new_route(key)
 	Routes[key] = {data = {}, best_before = minetest.get_day_count() + DAYS_VALID}
