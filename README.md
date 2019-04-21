@@ -46,7 +46,7 @@ New Features
 
 Use Case
 --------
-The main use of the minecart is for item transport from mines,
+The main use of the minecart is for item transport from mines to warehouses,
 ideally by means of an automation mod like Signs Bot.
 https://github.com/joe7575/signs_bot
 
