@@ -21,9 +21,9 @@ Cart textures are based on original work from PixelBOX by Gambit (permissive
 license).
 
 
-[1] https://github.com/SmallJoker/boost_cart/
-[2] https://github.com/PilzAdam/carts/
-[3] https://github.com/stujones11/railcart/
+1. https://github.com/SmallJoker/boost_cart/
+2. https://github.com/PilzAdam/carts/
+3. https://github.com/stujones11/railcart/
 
 
 Original Features
@@ -44,13 +44,22 @@ New Features
 - To store a route, a player has to place rail buffer on both ends,
   and use the minecart to ride the route in both directions.
 
-Usage
------
+Use Case
+--------
 The main use of the minecart is for item transport from mines,
 ideally by means of an automation mod like Signs Bot.
 https://github.com/joe7575/signs_bot
 
+Introduction
+------------
+
+1. Place your rails and build a route with two ends (junctions are not allowed or ignored)
+2. Place a Rail Buffer block at both ends
+3. Drive the route in both directions (teach-in), starting at the Rail Buffers
+4. Now you can drop items into the Minecart and punch der cart to get started
+
 History
 -------
 
-2018-04-19  v0.01  first commit
+2019-04-19  v0.01  first commit
+2019-04-21  v0.02  functional, but no support for junctions
