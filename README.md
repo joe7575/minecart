@@ -11,7 +11,7 @@ Download: ![GitHub](https://github.com/joe7575/minecart/archive/master.zip)
 ![minecart](https://github.com/joe7575/minecart/blob/master/screenshot.png)
 
 
-Minecart is based on Cards, which is
+Minecart is based on carts, which is
 based almost entirely on the mod boost_cart [1], which
 itself is based on (and fully compatible with) the carts mod [2].
 
@@ -40,7 +40,7 @@ New Features
   means of stored routes as mod storage. If the area is unloaded
   the cart will simply follow the predefined route until the an
   area is loaded again. In this case the cart will be spawned and
-  runs as usual.
+  run as usual.
 - To store a route, a player has to place Railway Buffers on both ends,
   and use the Minecart to drive the route in both directions.
 
