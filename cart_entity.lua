@@ -122,7 +122,7 @@ function cart_entity:on_punch(puncher, time_from_last_punch, tool_capabilities, 
 		return
 	end
 	------------------------------------ changed
-	minecart.start_teach_in(self, pos, vel, puncher)
+	minecart.start_recording(self, pos, vel, puncher)
 	------------------------------------ changed
 	-- Player punches cart to alter velocity
 	if puncher:get_player_name() == self.driver then
@@ -269,6 +269,13 @@ local function rail_on_step(self, dtime)
 	local dir, switch_keys = carts:get_rail_direction(
 		pos, cart_dir, ctrl, self.old_switch, self.railtype
 	)
+	------------------------------- changed
+	if switch_keys then
+		minecart.set_junction(self, pos, dir, switch_keys)
+	else
+		dir, switch_keys = minecart.get_junction(self, pos, dir)
+	end
+	------------------------------- changed
 	local dir_changed = not vector.equals(dir, self.old_dir)
 
 	local new_acc = {x=0, y=0, z=0}

@@ -8,11 +8,11 @@ local function data_maintenance()
 	local day_count = minetest.get_day_count()
 	local tbl = storage:to_table()
 	for key,s in pairs(tbl.fields) do
-		local val = minetest.deserialize(s)
-		if not val.data or not val.best_before or val.best_before < day_count then
+		local route = minetest.deserialize(s)
+		if not route.waypoints or not route.best_before or route.best_before < day_count then
 			storage:set_string(key, "")
 		else
-			minetest.log("info", "[minecart] Route: start="..key.." length="..#(val.data))
+			minetest.log("info", "[minecart] Route: start="..key.." length="..#(route.waypoints))
 		end
 	end
 end
@@ -32,23 +32,32 @@ minetest.register_on_shutdown(function()
 	storage:set_string("CartsOnRail", minetest.serialize(minecart.CartsOnRail))
 end)
 
-
+-- All positions as "pos_to_string" string
 --Routes = {
---	spos = {data = {spos, spos, spos}, best_before = ...},
---	spos = {data = {spos, spos, spos}, best_before = ...},
+--	  start_pos = {
+--        waypoints = {{spos, svel}, {spos, svel}, ...}, 
+--        dest_pos = spos,
+--        junctions = {
+--            {spos = num}, 
+--            {spos = num},
+--        },
+--        best_before = num
+--    },
+--	  start_pos = {...},
 --}
 local Routes = {}
+local NEW_ROUTE = {waypoints = {}, junctions = {}}
 
 function minecart.store_route(key, route)
-	Routes[key].data = table.copy(route)
+	Routes[key] = table.copy(route)
 	Routes[key].best_before = minetest.get_day_count() + DAYS_VALID
 	storage:set_string(key, minetest.serialize(Routes[key]))
 end
 
 function minecart.get_route(key)
-	Routes[key] = Routes[key] or minetest.deserialize(storage:get_string(key)) or {data = {}}
+	Routes[key] = Routes[key] or minetest.deserialize(storage:get_string(key)) or NEW_ROUTE
 	Routes[key].best_before = minetest.get_day_count() + DAYS_VALID
-	return Routes[key].data
+	return Routes[key]
 end
 
 function minecart.del_route(key)

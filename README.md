@@ -53,14 +53,16 @@ https://github.com/joe7575/signs_bot
 Introduction
 ------------
 
-1. Place your rails and build a route with two ends (junctions are not allowed or ignored)
-2. Place a Railway Buffer at both ends
-3. Drive the route in both directions (route recording), starting at the Railway Buffers
-4. Now you can drop items into the Minecart and punch der cart to get started
-5. To get the items back you have to dig the cart (as usual)
+1. Place your rails and build a route with two ends. Junctions are allowed as 
+   long as each route has its own start and end point.
+2. Place a Railway Buffer at both ends.
+3. Drive the route in both directions (route recording), starting at the Railway Buffers.
+4. Now you can drop items into the Minecart and punch der cart to get started.
+5. To get the items back you have to dig the cart (as usual).
 
 History
 -------
 
 2019-04-19  v0.01  first commit
-2019-04-21  v0.02  functional, but no support for junctions
+2019-04-21  v0.02  functional, with junctions support
+

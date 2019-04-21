@@ -3,11 +3,11 @@ local S = function(pos) if pos then return minetest.pos_to_string(pos) end end
 local function on_punch(pos, node, puncher)	
 	local start_key = S(pos)
 	local route = minecart.get_route(start_key)
-	if next(route) then
+	if next(route.waypoints) then
 		minetest.chat_send_player(puncher:get_player_name(), "[minecart] Route available:")
 		local no_cart = true
 		for key,item in pairs(minecart.CartsOnRail) do
-			if item.start_key == start_key then
+			if item.start_key == start_key or item.start_key == route.dest_pos then
 				local pos, vel = minecart.current_pos_and_vel(item)
 				minetest.chat_send_player(puncher:get_player_name(), " - cart at "..S(pos)..", velocity "..vector.length(vel))
 				no_cart = false
