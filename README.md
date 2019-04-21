@@ -55,7 +55,7 @@ Introduction
 
 1. Place your rails and build a route with two ends (junctions are not allowed or ignored)
 2. Place a Railway Buffer at both ends
-3. Drive the route in both directions (teach-in), starting at the Railway Buffers
+3. Drive the route in both directions (route recording), starting at the Railway Buffers
 4. Now you can drop items into the Minecart and punch der cart to get started
 5. To get the items back you have to dig the cart (as usual)
 
