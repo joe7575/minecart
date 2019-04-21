@@ -1,4 +1,4 @@
-local S = function(pos) if pos then return minetest.pos_to_string(pos) else return "" end end
+local S = function(pos) if pos then return minetest.pos_to_string(pos) end end
 
 local CartsOnRail = minecart.CartsOnRail
 
@@ -28,9 +28,11 @@ function minecart.start_teach_in(self, pos, vel, puncher)
 	if puncher:get_player_name() == self.driver and vector.equals(vel, {x=0, y=0, z=0}) then
 		self.start_key = get_route_key(pos)
 		if self.start_key then
-			CartsOnRail[self.myID] = {start_key = self.start_key, teach_in = true}
-			minecart.new_route(self.start_key)
+			--CartsOnRail[self.myID] = {start_key = self.start_key}
+			self.route = {}
+			self.teach_in = true
 			self.next_time = minetest.get_us_time() + 1000000
+			minetest.chat_send_player(self.driver, "[minecart] Start route recording!")
 		end
 	end
 end
@@ -39,15 +41,18 @@ function minecart.store_next_waypoint(self, pos, vel)
 	if self.start_key and self.teach_in and self.driver and 
 			self.next_time < minetest.get_us_time() then
 		self.next_time = minetest.get_us_time() + 1000000
-		local route = minecart.get_route(self.start_key)
-		route[#route+1] = {S(vector.round(pos)), S(vector.round(vel))}
+		self.route[#self.route+1] = {S(vector.round(pos)), S(vector.round(vel))}
 		
-		if vector.equals(vel, {x=0, y=0, z=0}) then
-			minecart.store_route(self.start_key)
-			CartsOnRail[self.myID] = nil
+		if vector.equals(vel, {x=0, y=0, z=0}) and get_route_key(pos) then
+			minecart.store_route(self.start_key, self.route)
+			self.teach_in = false
+			self.route = nil
+			minetest.chat_send_player(self.driver, "[minecart] Route stored!")
 		end
 	elseif self.teach_in and not self.driver then
 		self.teach_in = false
+		self.route = nil
+		minetest.chat_send_player(self.driver, "[minecart] Recording canceled!")
 	end
 end
 
@@ -71,7 +76,7 @@ function minecart.start_run(self, pos, vel, driver)
 			-- Don't start the cart
 			self.velocity = {x=0, y=0, z=0}
 			if driver then
-				minetest.chat_send_player(driver, "[minecart] Please start at a Railway Buffer!!")
+				minetest.chat_send_player(driver, "[minecart] Please start at a Railway Buffer!")
 			end
 		else
 			minetest.log("info", "[minecart] Cart "..self.myID.." started.")
@@ -113,6 +118,9 @@ function minecart.stopped(self, pos)
 		data.start_key = get_route_key(pos)
 		data.start_pos = pos
 		minetest.log("info", "[minecart] Cart "..self.myID.." stopped.")
+		if self.sound_handle then
+			minetest.sound_stop(self.sound_handle)
+		end
 	end
 end
 
@@ -149,7 +157,7 @@ local function monitoring()
 		if not item.teach_in then
 			local entity = minetest.luaentities[key]
 			local pos, vel = current_pos_and_vel(item)
-			print("CartsOnRail: id="..key.." start_pos="..S(item.start_pos).." start_key="..(item.start_key or "0").." pos="..S(pos).." vel="..S(vel))
+			--print("CartsOnRail: id="..key.." start_pos="..S(item.start_pos).." start_key="..(item.start_key or "0").." pos="..S(pos).." vel="..S(vel))
 			if pos and vel then
 				if entity then  -- cart running
 					if not minetest.get_node_or_nil(pos) then  -- in unloaded area
@@ -173,3 +181,6 @@ local function monitoring()
 	minetest.after(1, monitoring)
 end
 minetest.after(1, monitoring)
+
+minecart.current_pos_and_vel = current_pos_and_vel
+

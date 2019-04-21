@@ -1,7 +1,7 @@
 Minecart
 ========
 
-**A minecart running through unloaded area.**
+**A minecart running through unloaded areas for Minetest v5.0+**
 
 
 Browse on: ![GitHub](https://github.com/joe7575/minecart)

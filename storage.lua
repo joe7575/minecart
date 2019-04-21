@@ -39,18 +39,14 @@ end)
 --}
 local Routes = {}
 
-function minecart.new_route(key)
-	Routes[key] = {data = {}, best_before = minetest.get_day_count() + DAYS_VALID}
-	return Routes[key].data
+function minecart.store_route(key, route)
+	Routes[key].data = table.copy(route)
+	Routes[key].best_before = minetest.get_day_count() + DAYS_VALID
+	storage:set_string(key, minetest.serialize(Routes[key]))
 end
 
 function minecart.get_route(key)
-	if not Routes[key] then
-		Routes[key] = minetest.deserialize(storage:get_string(key))
-	end
-	if not Routes[key] then
-		return minecart.new_route(key)
-	end
+	Routes[key] = Routes[key] or minetest.deserialize(storage:get_string(key)) or {data = {}}
 	Routes[key].best_before = minetest.get_day_count() + DAYS_VALID
 	return Routes[key].data
 end
@@ -60,9 +56,4 @@ function minecart.del_route(key)
 	storage:set_string(key, "") -- and from storage
 end
 
-function minecart.store_route(key)
-	if Routes[key] then
-		storage:set_string(key, minetest.serialize(Routes[key]))
-	end
-end
 
