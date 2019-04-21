@@ -1,5 +1,5 @@
 minetest.register_node("minecart:buffer", {
-	description = "Minecart Buffer Stop",
+	description = "Minecart Railway Buffer",
 	tiles = {
 		'default_junglewood.png',
 		'default_junglewood.png',

@@ -64,15 +64,24 @@ function minecart.on_activate(self, dtime_s)
 	}
 end
 
-function minecart.start_run(self, pos, vel)
+function minecart.start_run(self, pos, vel, driver)
 	if vector.equals(vel, {x=0, y=0, z=0}) then
+		local start_key = get_route_key(pos)
+		if not start_key then
+			-- Don't start the cart
+			self.velocity = {x=0, y=0, z=0}
+			if driver then
+				minetest.chat_send_player(driver, "[minecart] Please start at a Railway Buffer!!")
+			end
+		else
+			minetest.log("info", "[minecart] Cart "..self.myID.." started.")
+		end
 		CartsOnRail[self.myID] = {
 			start_time = minetest.get_gametime(), 
-			start_key = get_route_key(pos),
+			start_key = start_key,
 			start_pos = pos,
 			stopped = false,
 		}
-		minetest.log("info", "[minecart] Cart "..self.myID.." started.")
 	end
 end
 

@@ -203,7 +203,7 @@ local function rail_on_step(self, dtime)
 	------------------------------------ changed
 	if self.punched then
 		------------------------------- changed
-		minecart.start_run(self, pos, vel)
+		minecart.start_run(self, pos, vel, self.driver)
 		------------------------------- changed
 		vel = vector.add(vel, self.velocity)
 		self.object:set_velocity(vel)

@@ -41,12 +41,12 @@ New Features
   the cart will simply follow the predefined route until the an
   area is loaded again. In this case the cart will be spawned and
   runs as usual.
-- To store a route, a player has to place rail buffer on both ends,
-  and use the minecart to ride the route in both directions.
+- To store a route, a player has to place Railway Buffers on both ends,
+  and use the Minecart to drive the route in both directions.
 
 Use Case
 --------
-The main use of the minecart is for item transport from mines to warehouses,
+The main use of the Minecart is for item transport from mines to warehouses,
 ideally by means of an automation mod like Signs Bot.
 https://github.com/joe7575/signs_bot
 
@@ -54,9 +54,10 @@ Introduction
 ------------
 
 1. Place your rails and build a route with two ends (junctions are not allowed or ignored)
-2. Place a Rail Buffer block at both ends
-3. Drive the route in both directions (teach-in), starting at the Rail Buffers
+2. Place a Railway Buffer at both ends
+3. Drive the route in both directions (teach-in), starting at the Railway Buffers
 4. Now you can drop items into the Minecart and punch der cart to get started
+5. To get the items back you have to dig the cart (as usual)
 
 History
 -------
