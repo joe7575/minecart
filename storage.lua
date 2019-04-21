@@ -9,11 +9,10 @@ local function data_maintenance()
 	local tbl = storage:to_table()
 	for key,s in pairs(tbl.fields) do
 		local val = minetest.deserialize(s)
-		--print(key, dump(val))
 		if not val.data or not val.best_before or val.best_before < day_count then
 			storage:set_string(key, "")
 		else
-			print(key, val.best_before, #(val.data))
+			minetest.log("info", "[minecart] Route: start="..key.." length="..#(val.data))
 		end
 	end
 end
@@ -27,11 +26,9 @@ for key,val in pairs(minetest.deserialize(storage:get_string("CartsOnRail")) or 
 	-- use invalid keys to force the cart spawning
 	minecart.CartsOnRail[-key] = val
 end
-print("CartsOnRail", dump(minecart.CartsOnRail))
 
 minetest.register_on_shutdown(function()
 	data_maintenance()
-	print("CartsOnRail", dump(minecart.CartsOnRail))
 	storage:set_string("CartsOnRail", minetest.serialize(minecart.CartsOnRail))
 end)
 
@@ -68,3 +65,4 @@ function minecart.store_route(key)
 		storage:set_string(key, minetest.serialize(Routes[key]))
 	end
 end
+

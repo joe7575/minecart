@@ -1,4 +1,4 @@
-local S = function(pos) if pos then return minetest.pos_to_string(pos) end end
+local S = function(pos) if pos then return minetest.pos_to_string(pos) else return "" end end
 
 local CartsOnRail = minecart.CartsOnRail
 
@@ -60,8 +60,8 @@ function minecart.on_activate(self, dtime_s)
 	CartsOnRail[self.myID] = {
 		start_key = get_route_key(pos),
 		start_pos = pos,
+		stopped = true,
 	}
-	print("CartsOnRail", dump(CartsOnRail))
 end
 
 function minecart.start_run(self, pos, vel)
@@ -70,9 +70,9 @@ function minecart.start_run(self, pos, vel)
 			start_time = minetest.get_gametime(), 
 			start_key = get_route_key(pos),
 			start_pos = pos,
+			stopped = false,
 		}
 		minetest.log("info", "[minecart] Cart "..self.myID.." started.")
-		print("CartsOnRail", dump(CartsOnRail))
 	end
 end
 
@@ -93,15 +93,16 @@ end
 
 function minecart.stopped(self, pos)
 	local data = CartsOnRail[self.myID]
-	if data then
+	if data and not data.stopped then
 		-- Spawn loaded items again
 		if data.attached_items then
 			for _,item in ipairs(data.attached_items) do
 				minetest.add_item(pos, ItemStack(item))
 			end
 		end
-		-- Remove data
-		CartsOnRail[self.myID] = nil
+		data.stopped = true
+		data.start_key = get_route_key(pos)
+		data.start_pos = pos
 		minetest.log("info", "[minecart] Cart "..self.myID.." stopped.")
 	end
 end
@@ -122,25 +123,24 @@ local function spawn_cart(pos, vel)
 end
 
 local function current_pos_and_vel(item)
-	local data
-	if item.start_time then
+	if item.start_time and item.start_key then
 		local run_time = minetest.get_gametime() - item.start_time
 		local route = minecart.get_route(item.start_key)
-		data = route[run_time]
-	else
-		data = item.start_pos, {x=0, y=0, z=0}
+		local data = route[run_time]
+		if data then
+			return minetest.string_to_pos(data[1]), minetest.string_to_pos(data[2])
+		end
 	end
-	if data then
-		return minetest.string_to_pos(data[1]), minetest.string_to_pos(data[2])
-	end
+	return item.start_pos, {x=0, y=0, z=0}
 end
 
 local function monitoring()
 	local to_be_added = {}
 	for key,item in pairs(CartsOnRail) do
-		if not item.teach_in and item.start_key then
+		if not item.teach_in then
 			local entity = minetest.luaentities[key]
 			local pos, vel = current_pos_and_vel(item)
+			print("CartsOnRail: id="..key.." start_pos="..S(item.start_pos).." start_key="..(item.start_key or "0").." pos="..S(pos).." vel="..S(vel))
 			if pos and vel then
 				if entity then  -- cart running
 					if not minetest.get_node_or_nil(pos) then  -- in unloaded area
