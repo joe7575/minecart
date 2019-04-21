@@ -26,14 +26,14 @@ function cart_entity:on_rightclick(clicker)
 	local player_name = clicker:get_player_name()
 	if self.driver and player_name == self.driver then
 		self.driver = nil
-		minecart:manage_attachment(clicker, nil)
+		carts:manage_attachment(clicker, nil)
 	elseif not self.driver then
 		self.driver = player_name
-		minecart:manage_attachment(clicker, self.object)
+		carts:manage_attachment(clicker, self.object)
 
-		-- default does not update the animation
+		-- player_api does not update the animation
 		-- when the player is attached, reset to default animation
-		--default.set_animation(clicker, "stand")
+		player_api.set_animation(clicker, "stand")
 	end
 end
 
@@ -78,7 +78,7 @@ function cart_entity:on_punch(puncher, time_from_last_punch, tool_capabilities, 
 	end
 	-- Punched by non-player
 	if not puncher or not puncher:is_player() then
-		local cart_dir = minecart:get_rail_direction(pos, self.old_dir, nil, nil, self.railtype)
+		local cart_dir = carts:get_rail_direction(pos, self.old_dir, nil, nil, self.railtype)
 		if vector.equals(cart_dir, {x=0, y=0, z=0}) then
 			return
 		end
@@ -97,7 +97,7 @@ function cart_entity:on_punch(puncher, time_from_last_punch, tool_capabilities, 
 				self.object:set_pos(self.old_pos)
 			end
 			local player = minetest.get_player_by_name(self.driver)
-			minecart:manage_attachment(player, nil)
+			carts:manage_attachment(player, nil)
 		end
 		for _, obj_ in ipairs(self.attached_items) do
 			if obj_ then
@@ -131,9 +131,9 @@ function cart_entity:on_punch(puncher, time_from_last_punch, tool_capabilities, 
 		end
 	end
 
-	local punch_dir = minecart:velocity_to_dir(puncher:get_look_dir())
+	local punch_dir = carts:velocity_to_dir(puncher:get_look_dir())
 	punch_dir.y = 0
-	local cart_dir = minecart:get_rail_direction(pos, punch_dir, nil, nil, self.railtype)
+	local cart_dir = carts:get_rail_direction(pos, punch_dir, nil, nil, self.railtype)
 	if vector.equals(cart_dir, {x=0, y=0, z=0}) then
 		return
 	end
@@ -215,8 +215,8 @@ local function rail_on_step(self, dtime)
 		return
 	end
 
-	--local pos = self.object:get_pos()
-	local cart_dir = minecart:velocity_to_dir(vel)
+	local pos = self.object:get_pos()
+	local cart_dir = carts:velocity_to_dir(vel)
 	local same_dir = vector.equals(cart_dir, self.old_dir)
 	local update = {}
 
@@ -246,7 +246,7 @@ local function rail_on_step(self, dtime)
 		local acc = self.object:get_acceleration()
 		local distance = dtime * (v3_len(vel) + 0.5 * dtime * v3_len(acc))
 
-		local new_pos, new_dir = minecart:pathfinder(
+		local new_pos, new_dir = carts:pathfinder(
 			pos, self.old_pos, self.old_dir, distance, ctrl,
 			self.old_switch, self.railtype
 		)
@@ -266,7 +266,7 @@ local function rail_on_step(self, dtime)
 
 	-- dir:         New moving direction of the cart
 	-- switch_keys: Currently pressed L/R key, used to ignore the key on the next rail node
-	local dir, switch_keys = minecart:get_rail_direction(
+	local dir, switch_keys = carts:get_rail_direction(
 		pos, cart_dir, ctrl, self.old_switch, self.railtype
 	)
 	local dir_changed = not vector.equals(dir, self.old_dir)
@@ -275,7 +275,7 @@ local function rail_on_step(self, dtime)
 	if stop_wiggle or vector.equals(dir, {x=0, y=0, z=0}) then
 		vel = {x = 0, y = 0, z = 0}
 		local pos_r = vector.round(pos)
-		if not minecart:is_rail(pos_r, self.railtype)
+		if not carts:is_rail(pos_r, self.railtype)
 				and self.old_pos then
 			pos = self.old_pos
 		elseif not stop_wiggle then
@@ -332,7 +332,7 @@ local function rail_on_step(self, dtime)
 	local max_vel = carts.speed_max
 	for _, v in pairs({"x","y","z"}) do
 		if math.abs(vel[v]) > max_vel then
-			vel[v] = minecart:get_sign(vel[v]) * max_vel
+			vel[v] = carts:get_sign(vel[v]) * max_vel
 			new_acc[v] = 0
 			update.vel = true
 		end
@@ -419,9 +419,9 @@ minetest.register_craftitem("minecart:cart", {
 		if not pointed_thing.type == "node" then
 			return
 		end
-		if minecart:is_rail(pointed_thing.under) then
+		if carts:is_rail(pointed_thing.under) then
 			minetest.add_entity(pointed_thing.under, "minecart:cart")
-		elseif minecart:is_rail(pointed_thing.above) then
+		elseif carts:is_rail(pointed_thing.above) then
 			minetest.add_entity(pointed_thing.above, "minecart:cart")
 		else
 			return
