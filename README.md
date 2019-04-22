@@ -38,7 +38,7 @@ New Features
 - Minecart has its own cart in addition to the standard cart.
 - The minecart can "run" through unloaded areas. This is done by 
   means of stored routes as mod storage. If the area is unloaded
-  the cart will simply follow the predefined route until the an
+  the cart will simply follow the predefined route until an
   area is loaded again. In this case the cart will be spawned and
   run as usual.
 - To store a route, a player has to place Railway Buffers on both ends,
@@ -63,6 +63,6 @@ Introduction
 History
 -------
 
-2019-04-19  v0.01  first commit
+2019-04-19  v0.01  first commit  
 2019-04-21  v0.02  functional, with junctions support
 
