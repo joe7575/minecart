@@ -57,7 +57,7 @@ Introduction
    long as each route has its own start and end point.
 2. Place a Railway Buffer at both ends.
 3. Drive the route in both directions (route recording), starting at the Railway Buffers.
-4. Now you can drop items into the Minecart and punch der cart to get started.
+4. Now you can drop items into the Minecart and punch the cart to get started.
 5. To get the items back you have to dig the cart (as usual).
 
 History
