@@ -221,3 +221,14 @@ minetest.after(1, monitoring)
 
 minecart.calc_pos_and_vel = calc_pos_and_vel
 
+--
+-- API function to get a list of cart data with current position and speed.
+--
+function minecart.get_cart_list()
+	local tbl = {}
+	for _,item in pairs(CartsOnRail) do
+		local pos, speed = calc_pos_and_vel(item)
+		tbl[#tbl+1] = {pos = pos, speed = speed}
+	end
+	return tbl
+end
