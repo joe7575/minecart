@@ -8,7 +8,7 @@ local function on_punch(pos, node, puncher)
 		local no_cart = true
 		for key,item in pairs(minecart.CartsOnRail) do
 			if item.start_key == start_key or item.start_key == route.dest_pos then
-				local pos, vel = minecart.current_pos_and_vel(item)
+				local pos, vel = minecart.calc_pos_and_vel(item)
 				minetest.chat_send_player(puncher:get_player_name(), " - cart at "..S(pos)..", velocity "..vector.length(vel))
 				no_cart = false
 			end
@@ -39,6 +39,7 @@ minetest.register_node("minecart:buffer", {
 	end,
 	on_punch = on_punch,
 	sunlight_propagates = true,
+	on_rotate = screwdriver.disallow,
 	paramtype2 = "facedir",
 	groups = {cracky=2, crumbly=2, choppy=2},
 	is_ground_content = false,

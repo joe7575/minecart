@@ -147,6 +147,7 @@ function minecart.stopped(self, pos)
 		data.stopped = true
 		data.start_key = get_route_key(pos)
 		data.start_pos = pos
+		data.start_time = nil
 		minetest.log("info", "[minecart] Cart "..self.myID.." stopped.")
 		if self.sound_handle then
 			minetest.sound_stop(self.sound_handle)
@@ -169,7 +170,7 @@ local function spawn_cart(pos, vel)
 	return id
 end
 
-local function current_pos_and_vel(item)
+local function calc_pos_and_vel(item)
 	if item.start_time and item.start_key then
 		local run_time = minetest.get_gametime() - item.start_time
 		local waypoints = minecart.get_route(item.start_key).waypoints
@@ -184,22 +185,28 @@ end
 local function monitoring()
 	local to_be_added = {}
 	for key,item in pairs(CartsOnRail) do
+		--print("Cart:", key, S(item.start_pos), item.stopped)
 		if not item.recording then
 			local entity = minetest.luaentities[key]
-			local pos, vel = current_pos_and_vel(item)
-			--print("CartsOnRail: id="..key.." start_pos="..S(item.start_pos).." start_key="..(item.start_key or "0").." pos="..S(pos).." vel="..S(vel))
-			if pos and vel then
-				if entity then  -- cart running
-					if not minetest.get_node_or_nil(pos) then  -- in unloaded area
-						minetest.log("info", "[minecart] Cart "..key.." virtualized.")
-						entity.object:remove()
+			if entity then  -- cart loaded
+				local pos = entity.object:get_pos()
+				if not minetest.get_node_or_nil(pos) then  -- in unloaded area
+					minetest.log("info", "[minecart] Cart "..key.." virtualized.")
+					if entity.sound_handle then
+						minetest.sound_stop(entity.sound_handle)
 					end
-				else  -- cart unloaded
+					entity.object:remove()
+				end
+			else  -- cart unloaded
+				local pos, vel = calc_pos_and_vel(item)
+				if pos and vel then
 					if minetest.get_node_or_nil(pos) then  -- in loaded area
 						local id = spawn_cart(pos, vel)
 						to_be_added[id] = table.copy(CartsOnRail[key])
 						CartsOnRail[key] = nil
 					end
+				else
+					CartsOnRail[key] = nil
 				end
 			end
 		end
@@ -212,5 +219,5 @@ local function monitoring()
 end
 minetest.after(1, monitoring)
 
-minecart.current_pos_and_vel = current_pos_and_vel
+minecart.calc_pos_and_vel = calc_pos_and_vel
 

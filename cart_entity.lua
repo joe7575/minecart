@@ -215,7 +215,7 @@ local function rail_on_step(self, dtime)
 		return
 	end
 
-	local pos = self.object:get_pos()
+	--local pos = self.object:get_pos()
 	local cart_dir = carts:velocity_to_dir(vel)
 	local same_dir = vector.equals(cart_dir, self.old_dir)
 	local update = {}
