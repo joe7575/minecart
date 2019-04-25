@@ -226,9 +226,9 @@ minecart.calc_pos_and_vel = calc_pos_and_vel
 --
 function minecart.get_cart_list()
 	local tbl = {}
-	for _,item in pairs(CartsOnRail) do
+	for id, item in pairs(CartsOnRail) do
 		local pos, speed = calc_pos_and_vel(item)
-		tbl[#tbl+1] = {pos = pos, speed = speed}
+		tbl[#tbl+1] = {pos = pos, speed = speed, id = id}
 	end
 	return tbl
 end
