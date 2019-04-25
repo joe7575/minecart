@@ -8,7 +8,9 @@ local cart_entity = {
 		textures = {"carts_cart.png^minecart_cart.png"},
 		static_save = false,
 	},
-
+    ------------------------------------ changed
+	owner = nil,
+	------------------------------------ changed
 	driver = nil,
 	punched = false, -- used to re-send velocity and position
 	velocity = {x=0, y=0, z=0}, -- only used on punch
@@ -53,12 +55,20 @@ function cart_entity:on_activate(staticdata, dtime_s)
 	if data.old_dir then
 		self.old_dir = data.old_dir
 	end
+	------------------------------------ changed
+	if data.owner then
+		self.owner = data.owner
+	end
+	------------------------------------ changed
 end
 
 function cart_entity:get_staticdata()
 	return minetest.serialize({
 		railtype = self.railtype,
-		old_dir = self.old_dir
+		old_dir = self.old_dir,
+		------------------------------------ changed
+		owner = self.owner,
+		------------------------------------ changed
 	})
 end
 
@@ -86,6 +96,13 @@ function cart_entity:on_punch(puncher, time_from_last_punch, tool_capabilities, 
 		self.punched = true
 		return
 	end
+	------------------------------------ changed
+	-- Punched by non-authorized player
+	if puncher and self.owner and self.owner ~= puncher:get_player_name() 
+			and not minetest.check_player_privs(puncher:get_player_name(), "minecart") then
+		return
+	end
+	------------------------------------ changed
 	-- Player digs cart by sneak-punch
 	if puncher:get_player_control().sneak then
 		if self.sound_handle then
@@ -427,9 +444,15 @@ minetest.register_craftitem("minecart:cart", {
 			return
 		end
 		if carts:is_rail(pointed_thing.under) then
-			minetest.add_entity(pointed_thing.under, "minecart:cart")
+			------------------------------- changed
+			local cart = minetest.add_entity(pointed_thing.under, "minecart:cart")
+			cart:get_luaentity().owner = placer:get_player_name()
+			------------------------------- changed
 		elseif carts:is_rail(pointed_thing.above) then
-			minetest.add_entity(pointed_thing.above, "minecart:cart")
+			------------------------------- changed
+			local cart = minetest.add_entity(pointed_thing.above, "minecart:cart")
+			cart:get_luaentity().owner = placer:get_player_name()
+			------------------------------- changed
 		else
 			return
 		end

@@ -36,13 +36,17 @@ Original Features
 New Features
 ------------
 - Minecart has its own cart in addition to the standard cart.
-- The minecart can "run" through unloaded areas. This is done by 
-  means of stored routes as mod storage. If the area is unloaded
+- The Minecart can "run" through unloaded areas. This is done by 
+  means of recorded and stored routes. If the area is unloaded
   the cart will simply follow the predefined route until an
   area is loaded again. In this case the cart will be spawned and
   run as usual.
+- The Minecart is protected and can't be removed by foreign players.
+- Protection Landmarks to protect the rails
 - To store a route, a player has to place Railway Buffers on both ends,
   and use the Minecart to drive the route in both directions.
+- The digging of protected Minecarts and rails is only possible as an owner 
+  or with 'minecart' privs.
 
 Use Case
 --------
@@ -56,14 +60,15 @@ Introduction
 1. Place your rails and build a route with two ends. Junctions are allowed as 
    long as each route has its own start and end point.
 2. Place a Railway Buffer at both ends.
-3. Drive the route in both directions (route recording), starting at the Railway Buffers.
-4. Now you can drop items into the Minecart and punch the cart to get started.
-5. To get the items back you have to dig the cart (as usual).
+3. Protect your rails with the Protection Landmarks (one Landmark at least every 16 blocks)
+4. Drive the route in both directions (route recording), starting at the Railway Buffers.
+5. Now you can drop items into the Minecart and punch the cart to get started.
+6. To get the items back you have to dig the cart (as usual).
 
 History
 -------
 
 2019-04-19  v0.01  first commit  
 2019-04-21  v0.02  functional, with junctions support  
-2019-04-23  v0.03  bug fixes and improvements
-
+2019-04-23  v0.03  bug fixes and improvements  
+2019-04-25  v0.04  Landmarks and Minecart protection added  
