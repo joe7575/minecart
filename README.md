@@ -64,6 +64,6 @@ History
 -------
 
 2019-04-19  v0.01  first commit  
-2019-04-21  v0.02  functional, with junctions support
+2019-04-21  v0.02  functional, with junctions support  
 2019-04-23  v0.03  bug fixes and improvements
 
