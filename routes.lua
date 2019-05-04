@@ -13,10 +13,13 @@ local function get_object_id(object)
 	end
 end
 
-local function get_route_key(pos)
+local function get_route_key(pos, player_name)
 	local pos1 = minetest.find_node_near(pos, 1, {"minecart:buffer"})
 	if pos1 then
-		return S(pos1)
+		local meta = minetest.get_meta(pos1)
+		if player_name == nil or player_name == meta:get_string("owner") then
+			return S(pos1)
+		end
 	end
 end
 
@@ -26,7 +29,7 @@ end
 function minecart.start_recording(self, pos, vel, puncher)	
 	-- Player punches cart to start the trip
 	if puncher:get_player_name() == self.driver and vector.equals(vel, {x=0, y=0, z=0}) then
-		self.start_key = get_route_key(pos)
+		self.start_key = get_route_key(pos, self.driver)
 		if self.start_key then
 			self.waypoints = {}
 			self.junctions = {}
@@ -43,7 +46,7 @@ function minecart.store_next_waypoint(self, pos, vel)
 		self.next_time = minetest.get_us_time() + 1000000
 		self.waypoints[#self.waypoints+1] = {S(vector.round(pos)), S(vector.round(vel))}
 		
-		local dest_pos = get_route_key(pos)
+		local dest_pos = get_route_key(pos, self.driver)
 		if vector.equals(vel, {x=0, y=0, z=0}) and dest_pos then
 			if self.start_key ~= dest_pos then
 				local route = {

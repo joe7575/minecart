@@ -31,7 +31,9 @@ minetest.register_node("minecart:buffer", {
 		'default_junglewood.png',
 		'default_junglewood.png^minecart_buffer.png',
 		},
-	after_place_node = function(pos)
+	after_place_node = function(pos, placer)
+		local meta = minetest.get_meta(pos)
+		meta:set_string("owner", placer:get_player_name())
 		minecart.del_route(minetest.pos_to_string(pos))
 	end,
 	after_dig_node = function(pos)
