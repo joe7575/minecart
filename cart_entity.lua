@@ -116,11 +116,16 @@ function cart_entity:on_punch(puncher, time_from_last_punch, tool_capabilities, 
 			local player = minetest.get_player_by_name(self.driver)
 			carts:manage_attachment(player, nil)
 		end
-		for _, obj_ in ipairs(self.attached_items) do
-			if obj_ then
-				obj_:set_detach()
-			end
+		------------------------------------ changed
+		if minecart.objects_added(self, pos, puncher) then
+			return
 		end
+		------------------------------------ changed
+--		for _, obj_ in ipairs(self.attached_items) do
+--			if obj_ then
+--				obj_:set_detach()
+--			end
+--		end
 		-- Pick up cart
 		local inv = puncher:get_inventory()
 		if not (creative and creative.is_enabled_for

@@ -42,7 +42,7 @@ New Features
   area is loaded again. In this case the cart will be spawned and
   run as usual.
 - The Minecart is protected and can't be removed by foreign players.
-- Protection Landmarks to protect the rails
+- The mod adds Protection Landmarks to protect the rails
 - To store a route, a player has to place Railway Buffers on both ends,
   and use the Minecart to drive the route in both directions.
 - The digging of protected Minecarts and rails is only possible as an owner 
@@ -63,7 +63,8 @@ Introduction
 3. Protect your rails with the Protection Landmarks (one Landmark at least every 16 blocks)
 4. Drive the route in both directions (route recording), starting at the Railway Buffers.
 5. Now you can drop items into the Minecart and punch the cart to get started.
-6. To get the items back you have to dig the cart (as usual).
+6. Sneak+click the cart to get the items back
+7. Dig the empty cart with a second sneak+Click (as usual).
 
 History
 -------
@@ -73,3 +74,4 @@ History
 2019-04-23  v0.03  bug fixes and improvements  
 2019-04-25  v0.04  Landmarks and Minecart protection added  
 2019-05-04  v0.05  Route recording protection added  
+2019-05-22  v0.06  Pick up items from a cart improved  

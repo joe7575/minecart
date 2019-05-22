@@ -158,6 +158,25 @@ function minecart.stopped(self, pos)
 	end
 end
 
+function minecart.objects_added(self, pos, puncher)
+	local added = false
+	local inv = puncher:get_inventory()
+	for _, obj_ in pairs(minetest.get_objects_inside_radius(pos, 1)) do
+		local entity = obj_:get_luaentity()
+		if not obj_:is_player() and entity and 
+				not entity.physical_state and entity.name == "__builtin:item" then
+			obj_:remove()
+			local item = ItemStack(entity.itemstring)
+			local leftover = inv:add_item("main", item)
+			if leftover:get_count() > 0 then
+				minetest.add_item(pos, leftover)
+			end
+			added = true
+		end
+	end
+	return added
+end
+
 function minecart.on_dig(self)
 	CartsOnRail[self.myID] = nil
 end
