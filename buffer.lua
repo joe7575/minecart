@@ -4,17 +4,17 @@ local function on_punch(pos, node, puncher)
 	local start_key = S(pos)
 	local route = minecart.get_route(start_key)
 	if next(route.waypoints) then
-		minetest.chat_send_player(puncher:get_player_name(), "[minecart] Route available:")
+		minetest.chat_send_player(puncher:get_player_name(), "[minecart] Route available")
 		local no_cart = true
 		for key,item in pairs(minecart.CartsOnRail) do
 			if item.start_key == start_key or item.start_key == route.dest_pos then
 				local pos, vel = minecart.calc_pos_and_vel(item)
-				minetest.chat_send_player(puncher:get_player_name(), " - cart at "..S(pos)..", velocity "..vector.length(vel))
+				minetest.chat_send_player(puncher:get_player_name(), "One cart at "..S(pos)..", velocity "..vector.length(vel))
 				no_cart = false
 			end
 		end
 		if no_cart then
-			minetest.chat_send_player(puncher:get_player_name(), " - no cart available")
+			minetest.chat_send_player(puncher:get_player_name(), "No cart available")
 		end
 	else
 		minetest.chat_send_player(puncher:get_player_name(), "[minecart] No route stored!")
@@ -31,6 +31,20 @@ minetest.register_node("minecart:buffer", {
 		'default_junglewood.png',
 		'default_junglewood.png^minecart_buffer.png',
 		},
+	drawtype = "nodebox",
+	node_box = {
+		type = "fixed",
+		fixed = {
+			{-8/16, -8/16, -8/16,  8/16,  -4/16,  8/16},
+			{-8/16, -4/16, -8/16,  8/16,   0/16,  4/16},
+			{-8/16,  0/16, -8/16,  8/16,   4/16,  0/16},
+			{-8/16,  4/16, -8/16,  8/16,   8/16, -4/16},
+		},
+	},
+	selection_box = {
+		type = "fixed",
+		fixed = {-8/16, -8/16, -8/16,  8/16, 8/16, 8/16},
+	},
 	after_place_node = function(pos, placer)
 		local meta = minetest.get_meta(pos)
 		meta:set_string("owner", placer:get_player_name())
