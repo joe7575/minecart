@@ -1,14 +1,29 @@
 # textdomain: minecart
 
-Minecart Landmark=Minecart Meilenstein
+1. Place your rails and build a route with two ends. Junctions are allowed as long as each route has its own start and end point.=1. Baue eine Schienenstrecke mit 2 Enden. Kreuzungen sind zulässig, solange jede Route ihre eigenen Start- und Endepunkt hat.
+2. Place a Railway Buffer at both ends.=2. Platziere einen Prellbock an beide Schienenenden.
+3. Protect your rails with the Protection Landmarks (one Landmark at least every 16 blocks)=3. Schütze deine Schienen mit Hilfe der Meilensteine (ein Meilenstein mindestens alle 16 Blöcke).
+4. Drive the route in both directions (route recording), starting at the Railway Buffers.=4. Fahre die Route in beide Richtungen (um die Route aufzuzeichnen), starte jeweils an den Prellböcken.
+5. Now you can drop items into the Minecart and punch the cart to get started.=5. Nun kannst du Gegenstände in ein Cart legen (Taste Q) und dann den Wagen durch Anklicken starten.
+6. Sneak+click the cart to get the items back=6. Klicke mit gedrückter Shift-Taste auf den Wagen, um Gegenstände auszuladen.
+7. Dig the empty cart with a second sneak+Click (as usual).=7. Klicke erneut mit gedrückter Shift-Taste auf den Wagen, um diesen zu entfernen.
+A minecart running through unloaded areas, mainly used for item transportation=Ein Wagen, welcher auch durch nicht geladene Kartenbereiche fährt, primär für den Transport von Gegenständen genutzt (Lore)
 Allow to dig/place rails in Minecart Landmark areas=Erlaubt dir, Schienen in Meilensteinbereichen zu setzen/zu entfernen
+Minecart=Minecart
 Minecart (Sneak+Click to pick up)=Minecart (Shift+Klick zum Entfernen des Carts)
-[minecart] Start route recording!=[minecart] Starte die Streckenaufzeichnung!
-[minecart] Route stored!=[minecart] Strecke aufgezeichnet!
-[minecart] Recording canceled!=[minecart] Aufzeichnung abgebrochen!
-[minecart] Please start at a Railway Buffer!=[minecart] Bitte starte beim Prellbock!
-[minecart] One cart at=[minecart] Ein Cart bei
-[minecart] No cart available=[minecart] Kein Cart verfügbar
-[minecart] No route stored!=[minecart] Keine Strecke aufgezeichnet!
+Minecart Cart=Wagen
+Minecart Landmark=Minecart Meilenstein
 Minecart Railway Buffer=Minecart Prellbock
+Primary used to transport items. You can drop items into the Minecart and punch the cart to get started. Sneak+click the cart to get the items back=Primär für den Transport von Gegenständen genutzt. Du kannst Gegenstände in ein Cart legen (Taste Q) und dann den Wagen durch Anklicken starten. Klicke mit gedrückter Shift-Taste auf den Wagen, um die Gegenstände wieder auszuladen
+Protect your rails with the Landmarks (one Landmark at least every 16 blocks near the rail)=Schütze deine Schienen mit Hilfe der Meilensteine (ein Meilenstein mindestens alle 16 Blöcke der Strecke entlang)
+Summary=Zusammenfassung
+Used as buffer on both rail ends. Needed to be able to record the cart routes=Preckblöcke müssen an beiden Schienenenden platziert sein, so dass Aufzeichnungen der Strecke gemacht werden können.
+[minecart] No cart available=[minecart] Kein Wagen verfügbar
+[minecart] No route stored!=[minecart] Keine Strecke aufgezeichnet!
+[minecart] One cart at=[minecart] Ein Cart bei
+[minecart] Please start at a Railway Buffer!=[minecart] Bitte starte beim Prellbock!
+[minecart] Recording canceled!=[minecart] Aufzeichnung abgebrochen!
+[minecart] Route available=[minecart] Strecke verfügbar
+[minecart] Route stored!=[minecart] Strecke gespeichert
+[minecart] Start route recording!=[minecart] Starte die Streckenaufzeichnung!
 velocity=Geschwindigkeit
