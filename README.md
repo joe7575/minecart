@@ -75,3 +75,4 @@ History
 2019-04-25  v0.04  Landmarks and Minecart protection added  
 2019-05-04  v0.05  Route recording protection added  
 2019-05-22  v0.06  Pick up items from a cart improved  
+2019-06-23  v0.07  'doc' mod support and German translation added  
