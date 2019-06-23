@@ -1,6 +1,8 @@
-##
-## Generate a template file for translation purposes
-##
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+#
+# Generate a template file for translation purposes
+
 
 import os, fnmatch, re
 
@@ -9,6 +11,7 @@ pattern = re.compile(r'[ \.=^\t]S\("(.+?)"\)', re.DOTALL)
 
 def gen_template(templ_file, lkeyStrings):
     lOut = []
+    lkeyStrings = list(set(lkeyStrings))
     lkeyStrings.sort()
     for s in lkeyStrings:
         lOut.append("%s=" % s)
@@ -27,7 +30,9 @@ def i18n(templ_file):
         for name in files:
             if fnmatch.fnmatch(name, "*.lua"):
                 fname = os.path.join(root, name)
+                print fname
                 lOut.extend(read_strings(fname))
     gen_template(templ_file, lOut)
     
 i18n("./locale/template.txt")
+print "Done.\n"
