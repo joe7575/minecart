@@ -1,28 +1,31 @@
-local S = function(pos) if pos then return minetest.pos_to_string(pos) end end
+local P2S = function(pos) if pos then return minetest.pos_to_string(pos) end end
+local S = minecart.S
 
 local function on_punch(pos, node, puncher)	
-	local start_key = S(pos)
+	local start_key = P2S(pos)
 	local route = minecart.get_route(start_key)
 	if next(route.waypoints) then
-		minetest.chat_send_player(puncher:get_player_name(), "[minecart] Route available")
+		minetest.chat_send_player(puncher:get_player_name(), 
+				S("[minecart] Route available"))
 		local no_cart = true
 		for key,item in pairs(minecart.CartsOnRail) do
 			if item.start_key == start_key or item.start_key == route.dest_pos then
 				local pos, vel = minecart.calc_pos_and_vel(item)
-				minetest.chat_send_player(puncher:get_player_name(), "One cart at "..S(pos)..", velocity "..vector.length(vel))
+				minetest.chat_send_player(puncher:get_player_name(), S("[minecart] One cart at").." "..
+						P2S(pos)..", "..S("velocity").." "..vector.length(vel))
 				no_cart = false
 			end
 		end
 		if no_cart then
-			minetest.chat_send_player(puncher:get_player_name(), "No cart available")
+			minetest.chat_send_player(puncher:get_player_name(), S("[minecart] No cart available"))
 		end
 	else
-		minetest.chat_send_player(puncher:get_player_name(), "[minecart] No route stored!")
+		minetest.chat_send_player(puncher:get_player_name(), S("[minecart] No route stored!"))
 	end
 end
 
 minetest.register_node("minecart:buffer", {
-	description = "Minecart Railway Buffer",
+	description = S("Minecart Railway Buffer"),
 	tiles = {
 		'default_junglewood.png',
 		'default_junglewood.png',

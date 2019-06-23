@@ -1,0 +1,14 @@
+# textdomain: minecart
+
+Minecart Landmark=Minecart Meilenstein
+Allow to dig/place rails in Minecart Landmark areas=Erlaubt dir, Schienen in Meilensteinbereichen zu setzen/zu entfernen
+Minecart (Sneak+Click to pick up)=Minecart (Shift+Klick zum Entfernen des Carts)
+[minecart] Start route recording!=[minecart] Starte die Streckenaufzeichnung!
+[minecart] Route stored!=[minecart] Strecke aufgezeichnet!
+[minecart] Recording canceled!=[minecart] Aufzeichnung abgebrochen!
+[minecart] Please start at a Railway Buffer!=[minecart] Bitte starte beim Prellbock!
+[minecart] One cart at=[minecart] Ein Cart bei
+[minecart] No cart available=[minecart] Kein Cart verfügbar
+[minecart] No route stored!=[minecart] Keine Strecke aufgezeichnet!
+Minecart Railway Buffer=Minecart Prellbock
+velocity=Geschwindigkeit

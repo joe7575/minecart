@@ -1,4 +1,5 @@
-local S = function(pos) if pos then return minetest.pos_to_string(pos) end end
+local P2S = function(pos) if pos then return minetest.pos_to_string(pos) end end
+local S = minecart.S
 
 local CartsOnRail = minecart.CartsOnRail
 
@@ -18,7 +19,7 @@ local function get_route_key(pos, player_name)
 	if pos1 then
 		local meta = minetest.get_meta(pos1)
 		if player_name == nil or player_name == meta:get_string("owner") then
-			return S(pos1)
+			return P2S(pos1)
 		end
 	end
 end
@@ -35,7 +36,7 @@ function minecart.start_recording(self, pos, vel, puncher)
 			self.junctions = {}
 			self.recording = true
 			self.next_time = minetest.get_us_time() + 1000000
-			minetest.chat_send_player(self.driver, "[minecart] Start route recording!")
+			minetest.chat_send_player(self.driver, S("[minecart] Start route recording!"))
 		end
 	end
 end
@@ -44,7 +45,7 @@ function minecart.store_next_waypoint(self, pos, vel)
 	if self.start_key and self.recording and self.driver and 
 			self.next_time < minetest.get_us_time() then
 		self.next_time = minetest.get_us_time() + 1000000
-		self.waypoints[#self.waypoints+1] = {S(vector.round(pos)), S(vector.round(vel))}
+		self.waypoints[#self.waypoints+1] = {P2S(vector.round(pos)), P2S(vector.round(vel))}
 		
 		local dest_pos = get_route_key(pos, self.driver)
 		if vector.equals(vel, {x=0, y=0, z=0}) and dest_pos then
@@ -55,9 +56,9 @@ function minecart.store_next_waypoint(self, pos, vel)
 					junctions = self.junctions,
 				}
 				minecart.store_route(self.start_key, route)
-				minetest.chat_send_player(self.driver, "[minecart] Route stored!")
+				minetest.chat_send_player(self.driver, S("[minecart] Route stored!"))
 			else
-				minetest.chat_send_player(self.driver, "[minecart] Recording canceled!")
+				minetest.chat_send_player(self.driver, S("[minecart] Recording canceled!"))
 			end
 			self.recording = false
 			self.waypoints = nil
@@ -108,7 +109,7 @@ function minecart.start_run(self, pos, vel, driver)
 			-- Don't start the cart
 			self.velocity = {x=0, y=0, z=0}
 			if driver then
-				minetest.chat_send_player(driver, "[minecart] Please start at a Railway Buffer!")
+				minetest.chat_send_player(driver, S("[minecart] Please start at a Railway Buffer!"))
 			end
 		else
 			minetest.log("info", "[minecart] Cart "..self.myID.." started.")
@@ -207,7 +208,7 @@ end
 local function monitoring()
 	local to_be_added = {}
 	for key,item in pairs(CartsOnRail) do
-		--print("Cart:", key, S(item.start_pos), item.stopped)
+		--print("Cart:", key, P2S(item.start_pos), item.stopped)
 		if not item.recording then
 			local entity = minetest.luaentities[key]
 			if entity then  -- cart loaded

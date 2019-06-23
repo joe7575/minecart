@@ -1,3 +1,4 @@
+local S = minecart.S
 local RANGE = 8
 
 local Rails = {
@@ -42,7 +43,7 @@ for _,name in ipairs(Rails) do
 end
 
 minetest.register_node("minecart:landmark", {
-	description = "Minecart Landmark",
+	description = S("Minecart Landmark"),
 	drawtype = "nodebox",
 	node_box = {
 		type = "fixed",
@@ -96,7 +97,7 @@ minetest.register_craft({
 })
 
 minetest.register_privilege("minecart", {
-	description = "Allow to dig/place rails in Minecart Landmark areas",
+	description = S("Allow to dig/place rails in Minecart Landmark areas"),
 	give_to_singleplayer = false,
 	give_to_admin = true,
 })
