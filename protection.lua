@@ -1,11 +1,12 @@
 local S = minecart.S
 local RANGE = 8
 
-local Rails = {
-	"carts:rail",
-	"carts:powerrail",
-	"carts:brakerail",
-}
+local IsNodeUnderObservation = {}
+
+-- Register all nodes, which should be protected by the "minecart:landmark"
+function minecart.register_protected_node(name)
+		IsNodeUnderObservation[name] = true
+end
 
 local function landmark_found(pos, name, range)
 	local pos1 = {x=pos.x-range, y=pos.y-range, z=pos.z-range}
@@ -19,27 +20,21 @@ local function landmark_found(pos, name, range)
 end
 
 local function is_protected(pos, name, range)
-	if not minetest.is_protected(pos, name)
-			and (minetest.check_player_privs(name, "minecart")
-			or not landmark_found(pos, name, range)) then
+	if minetest.check_player_privs(name, "minecart")
+			or not landmark_found(pos, name, range) then
 		return false
 	end
 	return true
 end
 
-local function can_dig(pos, player)
-	return not is_protected(pos, player:get_player_name(), RANGE)
-end
+local old_is_protected = minetest.is_protected
 
-local function after_place_node(pos, placer, itemstack, pointed_thing)
-	if is_protected(pos, placer:get_player_name(), RANGE) then
-		minetest.remove_node(pos)
-		return true
-	end
-end	
-
-for _,name in ipairs(Rails) do
-	minetest.override_item(name, {can_dig = can_dig, after_place_node = after_place_node})
+function minetest.is_protected(pos, name)
+	local node = minetest.get_node(pos)
+	if IsNodeUnderObservation[node.name] and is_protected(pos, name, RANGE) then
+        return true
+    end
+	return old_is_protected(pos, name)
 end
 
 minetest.register_node("minecart:landmark", {
@@ -101,3 +96,8 @@ minetest.register_privilege("minecart", {
 	give_to_singleplayer = false,
 	give_to_admin = true,
 })
+
+minecart.register_protected_node("carts:rail")
+minecart.register_protected_node("carts:powerrail")
+minecart.register_protected_node("carts:brakerail")
+minecart.register_protected_node("minecart:buffer")
