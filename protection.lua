@@ -91,6 +91,84 @@ minetest.register_craft({
 	},
 })
 
+minetest.register_node("minecart:ballast", {
+	description = "Minecart Ballast",
+	tiles = {"minecart_ballast.png"},
+	groups = {crumbly = 1, cracky = 3},
+	sounds = default.node_sound_stone_defaults(),
+})
+
+minetest.register_node("minecart:ballast_slope", {
+	description = "Minecart Ballast Slope",
+	tiles = {"minecart_ballast.png"},
+	drawtype = "nodebox",
+	node_box = {
+		type = "fixed",
+		fixed = {
+			{-8/16, -8/16, -8/16,  8/16, -4/16, 8/16},
+			{-8/16, -4/16, -4/16,  8/16,  0/16, 8/16},
+			{-8/16,  0/16,  0/16,  8/16,  4/16, 8/16},
+			{-8/16,  4/16,  4/16,  8/16,  8/16, 8/16},
+		},
+	},
+	selection_box = {
+		type = "fixed",
+		fixed = {-8/16, -8/16, -8/16,  8/16, 8/16, 8/16},
+	},
+	paramtype2 = "facedir",
+	groups = {crumbly = 1, cracky = 3},
+	sounds = default.node_sound_stone_defaults(),
+})
+
+minetest.register_node("minecart:ballast_ramp", {
+	description = "Minecart Ballast Ramp",
+	tiles = {"minecart_ballast.png"},
+	drawtype = "nodebox",
+	node_box = {
+		type = "fixed",
+		fixed = {
+			{-8/16, -8/16, -8/16,  8/16,  8/16, 8/16},
+			{-8/16, -4/16, -4/16,  8/16, 12/16, 8/16},
+			{-8/16,  0/16,  0/16,  8/16, 16/16, 8/16},
+			{-8/16,  4/16,  4/16,  8/16, 20/16, 8/16},
+		},
+	},
+	selection_box = {
+		type = "fixed",
+		fixed = {-8/16, -8/16, -8/16,  8/16, 8/16, 8/16},
+	},
+	paramtype2 = "facedir",
+	groups = {crumbly = 1, cracky = 3},
+	sounds = default.node_sound_stone_defaults(),
+})
+
+minetest.register_craft({
+	output = "minecart:ballast 6",
+	recipe = {
+		{"", "", ""},
+		{"default:cobble", "default:stone", "default:cobble"},
+		{"default:cobble", "default:stone", "default:cobble"},
+	},
+})
+
+minetest.register_craft({
+	output = "minecart:ballast_slope 6",
+	recipe = {
+		{"", "", "default:cobble"},
+		{"", "default:stone", "default:cobble"},
+		{"default:cobble", "default:stone", "default:cobble"},
+	},
+})
+
+minetest.register_craft({
+	output = "minecart:ballast_ramp 2",
+	recipe = {
+		{"", "", ""},
+		{"minecart:ballast_slope", "", ""},
+		{"minecart:ballast", "", ""},
+	},
+})
+
 minetest.register_privilege("minecart", {
 	description = S("Allow to dig/place rails in Minecart Landmark areas"),
 	give_to_singleplayer = false,
@@ -101,3 +179,6 @@ minecart.register_protected_node("carts:rail")
 minecart.register_protected_node("carts:powerrail")
 minecart.register_protected_node("carts:brakerail")
 minecart.register_protected_node("minecart:buffer")
+minecart.register_protected_node("minecart:ballast")
+minecart.register_protected_node("minecart:ballast_slope")
+minecart.register_protected_node("minecart:ballast_ramp")
