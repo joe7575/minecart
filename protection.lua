@@ -72,6 +72,8 @@ minetest.register_node("minecart:landmark", {
 		if minetest.check_player_privs(digger:get_player_name(), "minecart") then
 			return true
 		end
+		minetest.chat_send_player(digger:get_player_name(), 
+				S("[minecart] Area is protected! (owner: "..meta:get_string("owner")..")"))
 		return false
 	end,
 	
