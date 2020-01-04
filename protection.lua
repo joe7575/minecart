@@ -1,3 +1,15 @@
+--[[
+
+	Minecart
+	========
+
+	Copyright (C) 2019-2020 Joachim Stolberg
+
+	MIT
+	See license.txt for more information
+	
+]]--
+
 local S = minecart.S
 local RANGE = 8
 
@@ -73,7 +85,7 @@ minetest.register_node("minecart:landmark", {
 			return true
 		end
 		minetest.chat_send_player(digger:get_player_name(), 
-				S("[minecart] Area is protected! (owner: "..meta:get_string("owner")..")"))
+				S("[minecart] Area is protected!").." (owner: "..meta:get_string("owner")..")")
 		return false
 	end,
 	

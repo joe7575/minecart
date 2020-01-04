@@ -1,7 +1,7 @@
 Minecart
 ========
 
-**A minecart running through unloaded areas for Minetest v5.0+**
+**Minecart, the lean railway transportation automation system**
 
 
 Browse on: ![GitHub](https://github.com/joe7575/minecart)
@@ -26,45 +26,71 @@ license).
 3. https://github.com/stujones11/railcart/
 
 
-Original Features
------------------
+Original Cart Features
+----------------------
+
 - A fast cart for your railway or roller coaster (up to 7 m/s!)
 - Boost and brake rails
 - Rail junction switching with the 'right-left' walking keys
 - Handbrake with the 'back' key
 
-New Features
-------------
-- Minecart has its own cart in addition to the standard cart.
-- The Minecart can "run" through unloaded areas. This is done by 
-  means of recorded and stored routes. If the area is unloaded
-  the cart will simply follow the predefined route until an
-  area is loaded again. In this case the cart will be spawned and
-  run as usual.
-- The Minecart is protected and can't be removed by foreign players.
-- The mod adds Protection Landmarks to protect the rails
-- To store a route, a player has to place Railway Buffers on both ends,
-  and use the Minecart to drive the route in both directions.
-- The digging of protected Minecarts and rails is only possible as an owner 
-  or with 'minecart' privs.
 
-Use Case
---------
-The main use of the Minecart is for item transport from mines to warehouses,
-ideally by means of an automation mod like Signs Bot.
-https://github.com/joe7575/signs_bot
+Minecart Features
+-----------------
+
+The mod Minecart has its own cart (called Minecart) in addition to the standard cart.
+Minecarts are used for automated item transport on private and public rail networks.
+The mod features are:
+- configurable timetables and routes for Minecarts
+- automated loading/unloading of Minecarts by means of a Minecart Hopper
+- rail network protection based on protection blocks called Land Marks
+- protection of minecarts and cargo
+- Minecarts run through unloaded areas (only the stations/hopper have to be loaded)
+- Extra Minecard privs for rail workers
+- Ingame documentation (German and English), based on the mod "doc"
+
+
+Technical Background
+--------------------
+
+The Minecart can "run" through unloaded areas. This is done by means of recorded 
+and stored routes. If the area is unloaded the cart will simply follow the 
+predefined route until an area is loaded again. In this case the cart will be 
+spawned and run as usual.
+
 
 Introduction
 ------------
 
-1. Place your rails and build a route with two ends. Junctions are allowed as 
-   long as each route has its own start and end point.
-2. Place a Railway Buffer at both ends.
-3. Protect your rails with the Protection Landmarks (one Landmark at least every 16 blocks)
-4. Drive the route in both directions (route recording), starting at the Railway Buffers.
-5. Now you can drop items into the Minecart and punch the cart to get started.
-6. Sneak+click the cart to get the items back
-7. Dig the empty cart with a second sneak+Click (as usual).
+1. Place your rails and build a route with two endpoints. Junctions are allowed 
+   as long as each route has its own start and endpoint.
+2. Place a Railway Buffer at both endpoints. (buffers are always needed, 
+   they store the route and timing information)
+3. Give both Railway Buffers unique station names, like Oxford and Cambridge
+4. Drive from buffer to buffer in both directions using a Minecart(!) to record the 
+   routes (use 'right-left' keys to control the Minecart)
+5. Punch the buffers to check the connection data (e.g. "Oxford: connected to Cambridge")
+6. Optional: Configure the Minecart stop time in one or both buffers. The Minecart 
+   will then start automatically after the configured time
+7. Optional: Protect your rail network with the Protection Landmarks (one Landmark 
+   at least every 16 nodes/meters)
+8. Place a Minecart in front of the buffer and check whether it starts after the 
+   configured time
+9. Drop items into the Minecart and punch the cart to start it, or "sneak+click" the 
+   Minecart to get the items back
+10. Dig the empty cart with a second "sneak+click" (as usual)
+
+
+Hopper
+------
+
+![hopper](https://github.com/joe7575/minecart/blob/master/hopper.png)
+
+The Hopper is used to load/unload Minecarts.
+The Hopper can pull and push items into/out off chests and can drop/pick up items 
+to/from Minecarts. To unload a Minecart place the hopper below the rail. 
+To load the Minecart, place the hopper right next to the Minecart.
+
 
 History
 -------
@@ -76,3 +102,4 @@ History
 2019-05-04  v0.05  Route recording protection added  
 2019-05-22  v0.06  Pick up items from a cart improved  
 2019-06-23  v0.07  'doc' mod support and German translation added  
+2020-01-04  v1.00  Hopper added, buffer improved

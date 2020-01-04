@@ -1,4 +1,19 @@
+--[[
+
+	Minecart
+	========
+
+	Copyright (C) 2019-2020 Joachim Stolberg
+
+	MIT
+	See license.txt for more information
+	
+]]--
+
+-- for lazy programmers
+local M = minetest.get_meta
 local P2S = function(pos) if pos then return minetest.pos_to_string(pos) end end
+local S2P = minetest.string_to_pos
 local S = minecart.S
 
 local CartsOnRail = minecart.CartsOnRail
@@ -74,7 +89,9 @@ end
 function minecart.set_junction(self, pos, dir, switch_keys)
 	local junctions = CartsOnRail[self.myID] and CartsOnRail[self.myID].junctions
 	if junctions then
-		self.junctions[minetest.pos_to_string(vector.round(pos))] = {dir, switch_keys}
+		if self.junctions then
+			self.junctions[minetest.pos_to_string(vector.round(pos))] = {dir, switch_keys}
+		end
 	end
 end
 

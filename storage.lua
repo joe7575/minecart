@@ -1,4 +1,21 @@
-local S = function(pos) if pos then return minetest.pos_to_string(pos) end end
+--[[
+
+	Minecart
+	========
+
+	Copyright (C) 2019-2020 Joachim Stolberg
+
+	MIT
+	See license.txt for more information
+	
+]]--
+
+-- for lazy programmers
+local M = minetest.get_meta
+local P2S = function(pos) if pos then return minetest.pos_to_string(pos) end end
+local S2P = minetest.string_to_pos
+local S = minecart.S
+
 local DAYS_VALID = (30 * 72) -- 30 real days
 
 local storage = minetest.get_mod_storage()
