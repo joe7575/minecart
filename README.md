@@ -46,7 +46,7 @@ The mod features are:
 - rail network protection based on protection blocks called Land Marks
 - protection of minecarts and cargo
 - Minecarts run through unloaded areas (only the stations/hopper have to be loaded)
-- Extra Minecard privs for rail workers
+- Extra Minecart privs for rail workers
 - Ingame documentation (German and English), based on the mod "doc"
 
 

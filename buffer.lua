@@ -121,6 +121,7 @@ minetest.register_node("minecart:buffer", {
 		end
 	end,
 	on_punch = on_punch,
+	paramtype = "light",
 	sunlight_propagates = true,
 	on_rotate = screwdriver.disallow,
 	paramtype2 = "facedir",
