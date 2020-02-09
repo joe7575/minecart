@@ -110,6 +110,7 @@ minetest.register_node("minecart:hopper", {
 	end,
 
 	on_timer = function(pos, elapsed)
+		print("on_timer")
 		local inv = M(pos):get_inventory()
 		local param2 = minetest.get_node(pos).param2
 		param2 = (param2 + 1) % 4 -- output is on the right

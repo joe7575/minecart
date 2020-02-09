@@ -147,8 +147,7 @@ function minecart.store_loaded_items(self, pos)
 		data.attached_items = {}
 		for _, obj_ in pairs(minetest.get_objects_inside_radius(pos, 1)) do
 			local entity = obj_:get_luaentity()
-			if not obj_:is_player() and entity and 
-					not entity.physical_state and entity.name == "__builtin:item" then
+			if not obj_:is_player() and entity and entity.name == "__builtin:item" then
 				obj_:remove()
 				data.attached_items[#data.attached_items + 1] = entity.itemstring
 			end
