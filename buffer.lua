@@ -93,7 +93,6 @@ minetest.register_node("minecart:buffer", {
 					if StopTime[hash] < minetest.get_gametime() then
 						StopTime[hash] = nil
 						minecart.punch_cart(pos, param2)
-						minecart.hopper_resync(pos, param2)
 					end
 				else
 					StopTime[hash] = minetest.get_gametime() + time

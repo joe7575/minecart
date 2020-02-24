@@ -43,6 +43,17 @@ local function pull_push_item(pos, param2)
 			return false
 		end
 		return true
+	else
+		items = minecart.take_items({x=pos.x, y=pos.y+1, z=pos.z}, nil, NUM_ITEMS)
+		local leftover = minecart.put_items(pos, param2, items)
+		if items then
+			if leftover then
+				-- place item back
+				minecart.untake_items({x=pos.x, y=pos.y+1, z=pos.z}, nil, leftover)
+				return false
+			end
+			return true
+		end
 	end
 	return false
 end
@@ -58,7 +69,7 @@ local function push_item(pos, inv, param2)
 end
 
 local formspec = "size[8,6.5]"..
-	"list[context;main;2,0;2,2;]"..
+	"list[context;main;3,0;2,2;]"..
 	"list[current_player;main;0,2.7;8,4;]"..
 	"listring[context;main]"..
 	"listring[current_player;main]"

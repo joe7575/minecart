@@ -47,7 +47,10 @@ function minecart.check_cart(pos, param2)
 	end
 	for _, object in pairs(minetest.get_objects_inside_radius(pos, 0.5)) do
 		if object:get_entity_name() == "minecart:cart" then
-			return true
+			local vel = object:get_velocity()
+			if vector.equals(vel, {x=0, y=0, z=0}) then  -- still standing?
+				return true
+			end
 		end
 	end
 	return false
@@ -75,7 +78,12 @@ function minecart.inv_take_items(inv, listname, num)
 end
 
 function minecart.take_items(pos, param2, num)
-	local npos, node = get_next_node(pos, (param2 + 2) % 4)
+	local npos, node
+	if param2 then
+		npos, node = get_next_node(pos, (param2 + 2) % 4)
+	else
+		npos, node = pos, minetest.get_node(pos)
+	end
 	local def = RegisteredInventories[node.name]
 	local owner = M(pos):get_string("owner")
 	local inv = minetest.get_inventory({type="node", pos=npos})
@@ -104,7 +112,12 @@ function minecart.put_items(pos, param2, stack)
 end
 
 function minecart.untake_items(pos, param2, stack)
-	local npos, node = get_next_node(pos, (param2 + 2) % 4)
+	local npos, node
+	if param2 then
+		npos, node = get_next_node(pos, (param2 + 2) % 4)
+	else
+		npos, node = pos, minetest.get_node(pos)
+	end
 	local def = RegisteredInventories[node.name]
 	local inv = minetest.get_inventory({type="node", pos=npos})
 	
@@ -125,17 +138,6 @@ function minecart.punch_cart(pos, param2)
 		end
 	end
 end	
-
-function minecart.hopper_resync(pos, param2)
-	local pos2 = minecart.get_next_node(pos, param2)
-	local pos3 = {x = pos2.x-1, y = pos2.y, z = pos2.z-1}
-	local pos4 = {x = pos2.x+1, y = pos2.y, z = pos2.z-1}
-	for _, pos5 in ipairs(minetest.find_nodes_in_area(pos3, pos4, {"minecart:hopper"})) do
-		local node = minetest.get_node(pos5)
-		local def = minetest.registered_nodes[node.name]
-		def.minecart_resync(pos5)
-	end
-end
 
 -- Register inventory node for hopper access
 -- (for examples, see below)
