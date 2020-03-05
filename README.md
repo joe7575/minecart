@@ -105,3 +105,4 @@ History
 2020-01-04  v1.00  Hopper added, buffer improved  
 2020-02-09  v1.01  cart loading bugfix  
 2020-02-24  v1.02  Hopper improved  
+2020-03-05  v1.03  Hopper again improved  

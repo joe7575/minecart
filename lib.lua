@@ -90,6 +90,11 @@ function minecart.take_items(pos, param2, num)
 	
 	if def and inv and (not def.allow_take or def.allow_take(npos, nil, owner)) then
 		return minecart.inv_take_items(inv, def.take_listname, num)
+	else
+		local ndef = minetest.registered_nodes[node.name]
+		if ndef and ndef.minecart_hopper_takeitem then
+			return ndef.minecart_hopper_takeitem(npos, num)
+		end
 	end
 end
 
@@ -107,7 +112,15 @@ function minecart.put_items(pos, param2, stack)
 	elseif is_air_like(node.name) or check_cart(npos) then
 		minetest.add_item(npos, stack)
 	else
-		return stack
+		local ndef = minetest.registered_nodes[node.name]
+		if ndef and ndef.minecart_hopper_additem then
+			local leftover = ndef.minecart_hopper_additem(npos, stack)
+			if leftover:get_count() > 0 then
+				return leftover
+			end
+		else
+			return stack
+		end
 	end
 end
 
@@ -123,6 +136,11 @@ function minecart.untake_items(pos, param2, stack)
 	
 	if def then
 		return inv and inv:add_item(def.put_listname, stack)
+	else
+		local ndef = minetest.registered_nodes[node.name]
+		if ndef and ndef.minecart_hopper_untakeitem then
+			return ndef.minecart_hopper_untakeitem(npos, stack)
+		end
 	end
 end
 

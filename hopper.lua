@@ -45,8 +45,8 @@ local function pull_push_item(pos, param2)
 		return true
 	else
 		items = minecart.take_items({x=pos.x, y=pos.y+1, z=pos.z}, nil, NUM_ITEMS)
-		local leftover = minecart.put_items(pos, param2, items)
 		if items then
+			local leftover = minecart.put_items(pos, param2, items)
 			if leftover then
 				-- place item back
 				minecart.untake_items({x=pos.x, y=pos.y+1, z=pos.z}, nil, leftover)
@@ -152,12 +152,6 @@ minetest.register_node("minecart:hopper", {
 		end
 	end,
 	
-	-- to prevent items from being dropped when the cart is just launched
-	minecart_resync = function(pos)
-		minetest.get_node_timer(pos):stop()
-		minetest.get_node_timer(pos):start(2)
-	end,
-
 	paramtype = "light",
 	sunlight_propagates = true,
 	paramtype2 = "facedir",
