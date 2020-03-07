@@ -123,9 +123,9 @@ function minecart.start_run(self, pos, vel, driver)
 	if vector.equals(vel, {x=0, y=0, z=0}) then
 		local start_key = get_route_key(pos)
 		if not start_key then
-			-- Don't start the cart
-			self.velocity = {x=0, y=0, z=0}
 			if driver then
+				-- Don't start the cart
+				self.velocity = {x=0, y=0, z=0}
 				minetest.chat_send_player(driver, S("[minecart] Please start at a Railway Buffer!"))
 			end
 		else
