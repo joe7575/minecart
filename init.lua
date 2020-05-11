@@ -13,7 +13,7 @@
 minecart = {}
 
 -- Version for compatibility checks, see readme.md/history
-minecart.version = 1.03
+minecart.version = 1.05
 
 minecart.hopper_enabled = minetest.settings:get_bool("minecart_hopper_enabled") ~= false
 
@@ -27,6 +27,8 @@ dofile(MP.."/routes.lua")
 dofile(MP.."/cart_entity.lua")
 dofile(MP.."/buffer.lua")
 dofile(MP.."/protection.lua")
+dofile(MP.."/cart_api.lua")
+
 if minecart.hopper_enabled then
 	dofile(MP.."/hopper.lua")
 end

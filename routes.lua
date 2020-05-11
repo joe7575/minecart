@@ -42,6 +42,20 @@ end
 --
 -- Recording
 --
+function minecart.add_cart_to_monitoring(obj, owner)
+	local self = obj:get_luaentity()
+	self.myID = get_object_id(obj)
+	self.owner = owner
+	local pos = self.object:get_pos()
+	CartsOnRail[self.myID] = {
+		start_key = get_route_key(pos),
+		start_pos = pos,
+		stopped = true,
+		owner = owner,
+	}
+	return self.myID
+end
+
 function minecart.start_recording(self, pos, vel, puncher)	
 	-- Player punches cart to start the trip
 	if puncher:get_player_name() == self.driver and vector.equals(vel, {x=0, y=0, z=0}) then
@@ -109,26 +123,23 @@ end
 --
 -- Normal operation
 --
-function minecart.on_activate(self, dtime_s)
-	self.myID = get_object_id(self.object)
-	local pos = self.object:get_pos()
-	CartsOnRail[self.myID] = {
-		start_key = get_route_key(pos),
-		start_pos = pos,
-		stopped = true,
-	}
-end
-
 function minecart.start_run(self, pos, vel, driver)
 	if vector.equals(vel, {x=0, y=0, z=0}) then
 		local start_key = get_route_key(pos)
 		if not start_key then
-			if driver then
+			if driver then -- Punched from inside the cart
 				-- Don't start the cart
 				self.velocity = {x=0, y=0, z=0}
 				minetest.chat_send_player(driver, S("[minecart] Please start at a Railway Buffer!"))
+				return
 			end
-		else
+			-- Add also carts without route to be able to restore last pos/vel
+			minetest.log("info", "[minecart] Cart "..self.myID.." started.")
+			CartsOnRail[self.myID] = {
+				start_pos = pos,
+				stopped = false,
+			}
+		else -- Add cart to monitoring
 			minetest.log("info", "[minecart] Cart "..self.myID.." started.")
 			CartsOnRail[self.myID] = {
 				start_time = minetest.get_gametime(), 
@@ -141,7 +152,7 @@ function minecart.start_run(self, pos, vel, driver)
 	end
 end
 
-function minecart.store_loaded_items(self, pos)
+function minecart.attach_cargo(self, pos)
 	local data = CartsOnRail[self.myID]
 	if data then
 		data.attached_items = {}
@@ -155,15 +166,19 @@ function minecart.store_loaded_items(self, pos)
 	end
 end
 
+function minecart.detach_cargo(self, pos, data)
+	-- Spawn loaded items again
+	if data.attached_items then
+		for _,item in ipairs(data.attached_items) do
+			minetest.add_item(pos, ItemStack(item))
+		end
+	end
+end
+
 function minecart.stopped(self, pos)
 	local data = CartsOnRail[self.myID]
 	if data and not data.stopped then
-		-- Spawn loaded items again
-		if data.attached_items then
-			for _,item in ipairs(data.attached_items) do
-				minetest.add_item(pos, ItemStack(item))
-			end
-		end
+		minecart.detach_cargo(self, pos, data)
 		data.stopped = true
 		data.start_key = get_route_key(pos)
 		data.start_pos = pos
@@ -175,14 +190,14 @@ function minecart.stopped(self, pos)
 	end
 end
 
-function minecart.objects_added(self, pos, puncher)
+function minecart.add_cargo_to_player_inv(self, pos, puncher)
 	local added = false
 	local inv = puncher:get_inventory()
-	for _, obj_ in pairs(minetest.get_objects_inside_radius(pos, 1)) do
-		local entity = obj_:get_luaentity()
-		if not obj_:is_player() and entity and 
+	for _, obj in pairs(minetest.get_objects_inside_radius(pos, 1)) do
+		local entity = obj:get_luaentity()
+		if not obj:is_player() and entity and 
 				not entity.physical_state and entity.name == "__builtin:item" then
-			obj_:remove()
+			obj:remove()
 			local item = ItemStack(entity.itemstring)
 			local leftover = inv:add_item("main", item)
 			if leftover:get_count() > 0 then
@@ -195,16 +210,18 @@ function minecart.objects_added(self, pos, puncher)
 end
 
 function minecart.on_dig(self)
-	CartsOnRail[self.myID] = nil
+	if self and self.myID then
+		CartsOnRail[self.myID] = nil
+	end
 end
 
 --
 -- Monitoring
 --
-local function spawn_cart(pos, vel)
-	local object = minetest.add_entity(pos, "minecart:cart", nil)
-	object:set_velocity(vel)
-	local id = get_object_id(object)
+local function spawn_cart(pos, vel, owner)
+	local obj = minetest.add_entity(pos, "minecart:cart", nil)
+	obj:set_velocity(vel)
+	local id = minecart.add_cart_to_monitoring(obj, owner)
 	minetest.log("info", "[minecart] Cart "..id.." spawned again.")
 	return id
 end
@@ -217,6 +234,8 @@ local function calc_pos_and_vel(item)
 		if waypoint then
 			return minetest.string_to_pos(waypoint[1]), minetest.string_to_pos(waypoint[2])
 		end
+	elseif item.last_pos then
+		return item.last_pos, item.last_vel
 	end
 	return item.start_pos, {x=0, y=0, z=0}
 end
@@ -229,19 +248,26 @@ local function monitoring()
 			local entity = minetest.luaentities[key]
 			if entity then  -- cart loaded
 				local pos = entity.object:get_pos()
+				local vel = entity.object:get_velocity()
 				if not minetest.get_node_or_nil(pos) then  -- in unloaded area
 					minetest.log("info", "[minecart] Cart "..key.." virtualized.")
 					if entity.sound_handle then
 						minetest.sound_stop(entity.sound_handle)
 					end
+					if vector.equals(vel, {x=0, y=0, z=0}) then
+						minecart.attach_cargo(entity, pos)
+					end
 					entity.object:remove()
+				elseif not item.start_key then
+					-- store last pos from cart without route
+					item.last_pos, item.last_vel = pos, vel
 				end
 			else  -- cart unloaded
 				local pos, vel = calc_pos_and_vel(item)
 				if pos and vel then
 					if minetest.get_node_or_nil(pos) then  -- in loaded area
-						local id = spawn_cart(pos, vel)
-						to_be_added[id] = table.copy(CartsOnRail[key])
+						local id = spawn_cart(pos, vel, item.owner)
+						to_be_added[id] = table.copy(item)
 						CartsOnRail[key] = nil
 					end
 				else
@@ -271,3 +297,4 @@ function minecart.get_cart_list()
 	end
 	return tbl
 end
+

@@ -1,58 +1,90 @@
+--[[
+
+	Minecart
+	========
+
+	Copyright (C) 2019-2020 Joachim Stolberg
+
+	MIT
+	See license.txt for more information
+	
+	Cart API for external cart definitions on a node based model
+	
+]]--
+
+-- for lazy programmers
+local M = minetest.get_meta
 local S = minecart.S
+local P2S = function(pos) if pos then return minetest.pos_to_string(pos) end end
+local S2P = minetest.string_to_pos
 
-local cart_entity = {
-	initial_properties = {
-		physical = false, -- otherwise going uphill breaks
-		collisionbox = {-0.5, -0.5, -0.5, 0.5, 0.5, 0.5},
-		visual = "mesh",
-		mesh = "carts_cart.b3d",
-		visual_size = {x=1, y=1},
-		textures = {"carts_cart.png^minecart_cart.png"},
-		static_save = false,
-	},
-    ------------------------------------ changed
-	owner = nil,
-	------------------------------------ changed
-	driver = nil,
-	punched = false, -- used to re-send velocity and position
-	velocity = {x=0, y=0, z=0}, -- only used on punch
-	old_dir = {x=1, y=0, z=0}, -- random value to start the cart on punch
-	old_pos = nil,
-	old_switch = 0,
-	railtype = nil,
-	attached_items = {}
-}
+function minecart.register_cart_entity(entity_name, node_name, entity_def)
+	entity_def.velocity = {x=0, y=0, z=0} -- only used on punch
+	entity_def.old_dir = {x=1, y=0, z=0} -- random value to start the cart on punch
+	entity_def.old_pos = nil
+	entity_def.old_switch = 0
+	entity_def.node_name = node_name
+	minetest.register_entity(entity_name, entity_def)
+end
 
-function cart_entity:on_rightclick(clicker)
-	if not clicker or not clicker:is_player() then
+function minecart.node_on_place(itemstack, placer, pointed_thing, node_name)
+	local under = pointed_thing.under
+	local node = minetest.get_node(under)
+	local udef = minetest.registered_nodes[node.name]
+	if udef and udef.on_rightclick and
+			not (placer and placer:is_player() and
+			placer:get_player_control().sneak) then
+		return udef.on_rightclick(under, node, placer, itemstack,
+			pointed_thing) or itemstack
+	end
+
+	if not pointed_thing.type == "node" then
 		return
 	end
-	local player_name = clicker:get_player_name()
-	if self.driver and player_name == self.driver then
-		self.driver = nil
-		carts:manage_attachment(clicker, nil)
-	elseif not self.driver then
-		self.driver = player_name
-		carts:manage_attachment(clicker, self.object)
+	if carts:is_rail(pointed_thing.under) then
+		local rail = node.name
+		node.name = node_name
+		minetest.swap_node(pointed_thing.under, node)
+		M(pointed_thing.under):set_string("removed_rail", rail)
+	elseif carts:is_rail(pointed_thing.above) then
+		local rail = node.name
+		node.name = node_name
+		minetest.swap_node(pointed_thing.above, node)
+		M(pointed_thing.above):set_string("removed_rail", rail)
+	else
+		return
+	end
 
-		-- player_api does not update the animation
-		-- when the player is attached, reset to default animation
-		player_api.set_animation(clicker, "stand")
+	minetest.sound_play({name = "default_place_node_metal", gain = 0.5},
+		{pos = pointed_thing.above})
+
+	if not (creative and creative.is_enabled_for
+			and creative.is_enabled_for(placer:get_player_name())) then
+		itemstack:take_item()
+	end
+	return itemstack
+end
+
+function minecart.node_on_punch(pos, node, puncher, pointed_thing, entity_name)
+	node.name = M(pos):get_string("removed_rail")
+	if node.name ~= "" then
+		minetest.swap_node(pos, node)
+		local obj = minetest.add_entity(pos, entity_name)
+		minecart.add_cart_to_monitoring(obj, puncher:get_player_name())		
+		obj:punch(puncher, 1, {
+				full_punch_interval = 1.0,
+				damage_groups = {fleshy = 1},
+			}, minetest.facedir_to_dir(0))
 	end
 end
 
-function cart_entity:on_activate(staticdata, dtime_s)
+function minecart:on_activate(staticdata, dtime_s)
 	self.object:set_armor_groups({immortal=1})
 end
 
--- 0.5.x and later: When the driver leaves
-function cart_entity:on_detach_child(child)
-	if child and child:get_player_name() == self.driver then
-		self.driver = nil
-	end
-end
 
-function cart_entity:on_punch(puncher, time_from_last_punch, tool_capabilities, direction)
+function minecart:on_punch(puncher, time_from_last_punch, tool_capabilities, direction)
+	print("punched")
 	local pos = self.object:get_pos()
 	local vel = self.object:get_velocity()
 	if not self.railtype or vector.equals(vel, {x=0, y=0, z=0}) then
@@ -69,13 +101,13 @@ function cart_entity:on_punch(puncher, time_from_last_punch, tool_capabilities, 
 		self.punched = true
 		return
 	end
-	------------------------------------ changed
+	
 	-- Punched by non-authorized player
 	if puncher and self.owner and self.owner ~= puncher:get_player_name() 
 			and not minetest.check_player_privs(puncher:get_player_name(), "minecart") then
 		return
 	end
-	------------------------------------ changed
+	
 	-- Player digs cart by sneak-punch
 	if puncher:get_player_control().sneak then
 		if self.sound_handle then
@@ -89,37 +121,30 @@ function cart_entity:on_punch(puncher, time_from_last_punch, tool_capabilities, 
 			local player = minetest.get_player_by_name(self.driver)
 			carts:manage_attachment(player, nil)
 		end
-		------------------------------------ changed
-		if minecart.add_cargo_to_player_inv(self, pos, puncher) then
-			return
-		end
-		------------------------------------ changed
 		-- Pick up cart
 		local inv = puncher:get_inventory()
 		if not (creative and creative.is_enabled_for
 				and creative.is_enabled_for(puncher:get_player_name()))
-				or not inv:contains_item("main", "minecart:cart") then
-			local leftover = inv:add_item("main", "minecart:cart")
+				or not inv:contains_item("main", self.name) then
+			local leftover = inv:add_item("main", self.name)
 			-- If no room in inventory add a replacement cart to the world
 			if not leftover:is_empty() then
 				minetest.add_item(self.object:get_pos(), leftover)
 			end
 		end
-		------------------------------------ changed
 		minecart.on_dig(self)
-		------------------------------------ changed
 		self.object:remove()
 		return
 	end
-	------------------------------------ changed
-	minecart.start_recording(self, pos, vel, puncher)
-	------------------------------------ changed
-	-- Player punches cart to alter velocity
-	if puncher:get_player_name() == self.driver then
-		if math.abs(vel.x + vel.z) > carts.punch_speed_max then
-			return
-		end
-	end
+--	------------------------------------ changed
+--	minecart.start_recording(self, pos, vel, puncher)
+--	------------------------------------ changed
+--	-- Player punches cart to alter velocity
+--	if puncher:get_player_name() == self.driver then
+--		if math.abs(vel.x + vel.z) > carts.punch_speed_max then
+--			return
+--		end
+--	end
 
 	local punch_dir = carts:velocity_to_dir(puncher:get_look_dir())
 	punch_dir.y = 0
@@ -185,10 +210,18 @@ local function get_railparams(pos)
 end
 
 local v3_len = vector.length
+
 local function rail_on_step(self, dtime)
 	local vel = self.object:get_velocity()
 	------------------------------------ changed
 	local pos = self.object:get_pos()
+	
+	-- cart position correction on slopes
+	local rot = self.object:get_rotation()
+	if rot.x ~= 0 then
+		pos.y = pos.y - 0.5
+	end
+	
 	minecart.store_next_waypoint(self, pos, vel)
 	------------------------------------ changed
 	if self.punched then
@@ -205,10 +238,11 @@ local function rail_on_step(self, dtime)
 		return
 	end
 
-	--local pos = self.object:get_pos()
 	local cart_dir = carts:velocity_to_dir(vel)
 	local same_dir = vector.equals(cart_dir, self.old_dir)
 	local update = {}
+
+	print("rail_on_step 1", P2S(pos), P2S(vel), self.punched)
 
 	if self.old_pos and not self.punched and same_dir then
 		local flo_pos = vector.round(pos)
@@ -222,12 +256,12 @@ local function rail_on_step(self, dtime)
 	local ctrl, player
 
 	-- Get player controls
-	if self.driver then
-		player = minetest.get_player_by_name(self.driver)
-		if player then
-			ctrl = player:get_player_control()
-		end
-	end
+--	if self.driver then
+--		player = minetest.get_player_by_name(self.driver)
+--		if player then
+--			ctrl = player:get_player_control()
+--		end
+--	end
 
 	local stop_wiggle = false
 	if self.old_pos and same_dir then
@@ -335,6 +369,7 @@ local function rail_on_step(self, dtime)
 		end
 	end
 
+	print("rail_on_step 2", P2S(pos), P2S(vel), self.punched)
 	self.object:set_acceleration(new_acc)
 	self.old_pos = vector.round(pos)
 	if not vector.equals(dir, {x=0, y=0, z=0}) and not stop_wiggle then
@@ -343,10 +378,6 @@ local function rail_on_step(self, dtime)
 	self.old_switch = switch_keys
 
 	if self.punched then
-		-- Collect dropped items
-		------------------------------- changed
-		minecart.attach_cargo(self, pos)
-		------------------------------- changed
 		self.punched = false
 		update.vel = true
 	end
@@ -360,22 +391,36 @@ local function rail_on_step(self, dtime)
 
 	local yaw = 0
 	if self.old_dir.x < 0 then
-		yaw = 0.5
+		yaw = math.pi/2*3
 	elseif self.old_dir.x > 0 then
-		yaw = 1.5
+		yaw = math.pi/2
 	elseif self.old_dir.z < 0 then
-		yaw = 1
+		yaw = math.pi
 	end
-	self.object:set_yaw(yaw * math.pi)
+	--self.object:set_yaw(yaw * math.pi)
 
-	local anim = {x=0, y=0}
-	if dir.y == -1 then
-		anim = {x=1, y=1}
-	elseif dir.y == 1 then
-		anim = {x=2, y=2}
+	local pitch = 0
+	if self.old_dir.z ~= 0 then
+		if dir.y == -1 then
+			pitch = -math.pi/4
+		elseif dir.y == 1 then
+			pitch = math.pi/4
+		end
+	else
+		if dir.y == -1 then
+			pitch = math.pi/4
+		elseif dir.y == 1 then
+			pitch = -math.pi/4
+		end
 	end
-	self.object:set_animation(anim, 1, 0)
-
+	self.object:set_rotation({x = pitch, y = yaw, z = 0})
+	
+	-- cart position correction on slopes
+	if pitch ~= 0 then
+		pos.y = pos.y + 0.5
+		update.pos = true
+	end
+	
 	if update.vel then
 		self.object:set_velocity(vel)
 	end
@@ -391,60 +436,7 @@ local function rail_on_step(self, dtime)
 	rail_on_step_event(railparams.on_step, self, dtime)
 end
 
-function cart_entity:on_step(dtime)
+function minecart:on_step(dtime)
 	rail_on_step(self, dtime)
 	rail_sound(self, dtime)
 end
-
-minetest.register_entity("minecart:cart", cart_entity)
-
-minetest.register_craftitem("minecart:cart", {
-	description = S("Minecart (Sneak+Click to pick up)"),
-	inventory_image = minetest.inventorycube("carts_cart_top.png", "carts_cart_side.png^minecart_logo.png", "carts_cart_side.png^minecart_logo.png"),
-	wield_image = "carts_cart_side.png",
-	on_place = function(itemstack, placer, pointed_thing)
-		local under = pointed_thing.under
-		local node = minetest.get_node(under)
-		local udef = minetest.registered_nodes[node.name]
-		if udef and udef.on_rightclick and
-				not (placer and placer:is_player() and
-				placer:get_player_control().sneak) then
-			return udef.on_rightclick(under, node, placer, itemstack,
-				pointed_thing) or itemstack
-		end
-
-		if not pointed_thing.type == "node" then
-			return
-		end
-		if carts:is_rail(pointed_thing.under) then
-			------------------------------- changed
-			local cart = minetest.add_entity(pointed_thing.under, "minecart:cart")
-			minecart.add_cart_to_monitoring(cart, placer:get_player_name())
-			------------------------------- changed
-		elseif carts:is_rail(pointed_thing.above) then
-			------------------------------- changed
-			local cart = minetest.add_entity(pointed_thing.above, "minecart:cart")
-			minecart.add_cart_to_monitoring(cart, placer:get_player_name())
-			------------------------------- changed
-		else
-			return
-		end
-
-		minetest.sound_play({name = "default_place_node_metal", gain = 0.5},
-			{pos = pointed_thing.above})
-
-		if not (creative and creative.is_enabled_for
-				and creative.is_enabled_for(placer:get_player_name())) then
-			itemstack:take_item()
-		end
-		return itemstack
-	end,
-})
-
-minetest.register_craft({
-	output = "minecart:cart",
-	recipe = {
-		{"default:steel_ingot", "default:cobble", "default:steel_ingot"},
-		{"default:steel_ingot", "default:steel_ingot", "default:steel_ingot"},
-	},
-})
