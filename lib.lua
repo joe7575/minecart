@@ -27,6 +27,9 @@ local param2_to_dir = {[0]=
 	{x=0,  y=1,  z=0}
 }
 
+-- Registered foreign node carts
+minecart.ValidCartNodes = {}
+
 local function is_air_like(name)
 	local ndef = minetest.registered_nodes[name]
 	if ndef and ndef.buildable_to then
@@ -36,16 +39,20 @@ local function is_air_like(name)
 end
 
 function minecart.get_next_node(pos, param2)
-	local pos2 = vector.add(pos, param2_to_dir[param2])
+	local pos2 = param2 and vector.add(pos, param2_to_dir[param2]) or pos
 	local node = minetest.get_node(pos2)
 	return pos2, node
 end
 
-function minecart.check_cart(pos, param2)	
-	if param2 then
-		pos = minecart.get_next_node(pos, param2)
+function minecart.check_cart(pos, param2, radius)	
+	local pos2 = param2 and vector.add(pos, param2_to_dir[param2]) or pos
+	local node = minetest.get_node(pos2)
+	
+	if minecart.ValidCartNodes[node.name] then
+		return true
 	end
-	for _, object in pairs(minetest.get_objects_inside_radius(pos, 0.5)) do
+	
+	for _, object in pairs(minetest.get_objects_inside_radius(pos2, radius or 0.5)) do
 		if object:get_entity_name() == "minecart:cart" then
 			local vel = object:get_velocity()
 			if vector.equals(vel, {x=0, y=0, z=0}) then  -- still standing?
@@ -53,6 +60,7 @@ function minecart.check_cart(pos, param2)
 			end
 		end
 	end
+	
 	return false
 end
 
@@ -144,9 +152,16 @@ function minecart.untake_items(pos, param2, stack)
 	end
 end
 
-function minecart.punch_cart(pos, param2)
+function minecart.punch_cart(pos, param2, radius)
 	local pos2 = minecart.get_next_node(pos, param2)
-	for _, object in pairs(minetest.get_objects_inside_radius(pos2, 0.5)) do
+	local node = minetest.get_node(pos2)
+	
+	if minecart.ValidCartNodes[node.name] then
+		minecart.node_on_punch(pos2, node, nil, nil, minecart.ValidCartNodes[node.name])
+		return true
+	end
+	
+	for _, object in pairs(minetest.get_objects_inside_radius(pos2, radius or 0.5)) do
 		if object:get_entity_name() == "minecart:cart" then
 			object:punch(object, 1.0, {
 				full_punch_interval = 1.0,

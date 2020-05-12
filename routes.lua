@@ -42,7 +42,8 @@ end
 --
 -- Recording
 --
-function minecart.add_cart_to_monitoring(obj, owner)
+function minecart.add_cart_to_monitoring(obj, owner, cargo)
+	--print("add_cart_to_monitoring", dump(cargo))
 	local self = obj:get_luaentity()
 	self.myID = get_object_id(obj)
 	self.owner = owner
@@ -52,6 +53,8 @@ function minecart.add_cart_to_monitoring(obj, owner)
 		start_pos = pos,
 		stopped = true,
 		owner = owner,
+		entity_name = self.name,
+		cargo = cargo,
 	}
 	return self.myID
 end
@@ -135,19 +138,16 @@ function minecart.start_run(self, pos, vel, driver)
 			end
 			-- Add also carts without route to be able to restore last pos/vel
 			minetest.log("info", "[minecart] Cart "..self.myID.." started.")
-			CartsOnRail[self.myID] = {
-				start_pos = pos,
-				stopped = false,
-			}
+			--print("start_run", dump(CartsOnRail[self.myID]))
+			CartsOnRail[self.myID].stopped = false
 		else -- Add cart to monitoring
 			minetest.log("info", "[minecart] Cart "..self.myID.." started.")
-			CartsOnRail[self.myID] = {
-				start_time = minetest.get_gametime(), 
-				start_key = start_key,
-				start_pos = pos,
-				stopped = false,
-				junctions = minecart.get_route(start_key).junctions,
-			}
+			--print("start_run", dump(CartsOnRail[self.myID]))
+			local item = CartsOnRail[self.myID]
+			item.start_time = minetest.get_gametime()
+			item.start_key = start_key
+			item.stopped = false
+			item.junctions = minecart.get_route(start_key).junctions
 		end
 	end
 end
@@ -187,26 +187,8 @@ function minecart.stopped(self, pos)
 		if self.sound_handle then
 			minetest.sound_stop(self.sound_handle)
 		end
+		return data.cargo or {} -- for node based carts
 	end
-end
-
-function minecart.add_cargo_to_player_inv(self, pos, puncher)
-	local added = false
-	local inv = puncher:get_inventory()
-	for _, obj in pairs(minetest.get_objects_inside_radius(pos, 1)) do
-		local entity = obj:get_luaentity()
-		if not obj:is_player() and entity and 
-				not entity.physical_state and entity.name == "__builtin:item" then
-			obj:remove()
-			local item = ItemStack(entity.itemstring)
-			local leftover = inv:add_item("main", item)
-			if leftover:get_count() > 0 then
-				minetest.add_item(pos, leftover)
-			end
-			added = true
-		end
-	end
-	return added
 end
 
 function minecart.on_dig(self)
@@ -218,10 +200,10 @@ end
 --
 -- Monitoring
 --
-local function spawn_cart(pos, vel, owner)
-	local obj = minetest.add_entity(pos, "minecart:cart", nil)
+local function spawn_cart(pos, vel, item)
+	local obj = minetest.add_entity(pos, item.entity_name or "minecart:cart", nil)
 	obj:set_velocity(vel)
-	local id = minecart.add_cart_to_monitoring(obj, owner)
+	local id = minecart.add_cart_to_monitoring(obj, item.owner)
 	minetest.log("info", "[minecart] Cart "..id.." spawned again.")
 	return id
 end
@@ -242,11 +224,11 @@ end
 
 local function monitoring()
 	local to_be_added = {}
-	for key,item in pairs(CartsOnRail) do
-		--print("Cart:", key, P2S(item.start_pos), item.stopped)
+	for key, item in pairs(CartsOnRail) do
+		print("Cart:", key, P2S(item.start_pos), item.owner)
 		if not item.recording then
 			local entity = minetest.luaentities[key]
-			if entity then  -- cart loaded
+			if entity then  -- cart in loaded area
 				local pos = entity.object:get_pos()
 				local vel = entity.object:get_velocity()
 				if not minetest.get_node_or_nil(pos) then  -- in unloaded area
@@ -262,11 +244,11 @@ local function monitoring()
 					-- store last pos from cart without route
 					item.last_pos, item.last_vel = pos, vel
 				end
-			else  -- cart unloaded
+			else  -- cart in unloaded area
 				local pos, vel = calc_pos_and_vel(item)
 				if pos and vel then
 					if minetest.get_node_or_nil(pos) then  -- in loaded area
-						local id = spawn_cart(pos, vel, item.owner)
+						local id = spawn_cart(pos, vel, item)
 						to_be_added[id] = table.copy(item)
 						CartsOnRail[key] = nil
 					end
@@ -298,3 +280,5 @@ function minecart.get_cart_list()
 	return tbl
 end
 
+-- minecart.get_route_key(pos, player_name)
+minecart.get_route_key = get_route_key

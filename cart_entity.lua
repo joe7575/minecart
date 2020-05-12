@@ -52,6 +52,25 @@ function cart_entity:on_detach_child(child)
 	end
 end
 
+local function add_cargo_to_player_inv(self, pos, puncher)
+	local added = false
+	local inv = puncher:get_inventory()
+	for _, obj in pairs(minetest.get_objects_inside_radius(pos, 1)) do
+		local entity = obj:get_luaentity()
+		if not obj:is_player() and entity and 
+				not entity.physical_state and entity.name == "__builtin:item" then
+			obj:remove()
+			local item = ItemStack(entity.itemstring)
+			local leftover = inv:add_item("main", item)
+			if leftover:get_count() > 0 then
+				minetest.add_item(pos, leftover)
+			end
+			added = true
+		end
+	end
+	return added
+end
+
 function cart_entity:on_punch(puncher, time_from_last_punch, tool_capabilities, direction)
 	local pos = self.object:get_pos()
 	local vel = self.object:get_velocity()
@@ -90,7 +109,7 @@ function cart_entity:on_punch(puncher, time_from_last_punch, tool_capabilities, 
 			carts:manage_attachment(player, nil)
 		end
 		------------------------------------ changed
-		if minecart.add_cargo_to_player_inv(self, pos, puncher) then
+		if add_cargo_to_player_inv(self, pos, puncher) then
 			return
 		end
 		------------------------------------ changed

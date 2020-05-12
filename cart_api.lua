@@ -25,6 +25,28 @@ function minecart.register_cart_entity(entity_name, node_name, entity_def)
 	entity_def.old_switch = 0
 	entity_def.node_name = node_name
 	minetest.register_entity(entity_name, entity_def)
+	-- register node for punching
+	minecart.ValidCartNodes[node_name] = entity_name
+end
+
+local function switch_to_node(pos, node_name, owner, param2, cargo)
+	local node = minetest.get_node(pos)
+	local rail = node.name
+	local ndef = minetest.registered_nodes[node_name]
+	if ndef then
+		node.name = node_name
+		node.param2 = param2
+		minetest.add_node(pos, node)
+		M(pos):set_string("removed_rail", rail)
+		M(pos):set_string("owner", owner)
+		if ndef.after_place_node then
+			ndef.after_place_node(pos)
+		end
+		if cargo and ndef.set_cargo then
+			ndef.set_cargo(pos, cargo)
+		end
+	end
+	
 end
 
 function minecart.node_on_place(itemstack, placer, pointed_thing, node_name)
@@ -41,16 +63,12 @@ function minecart.node_on_place(itemstack, placer, pointed_thing, node_name)
 	if not pointed_thing.type == "node" then
 		return
 	end
+	local owner = placer:get_player_name()
+	local param2 = minetest.dir_to_facedir(placer:get_look_dir())
 	if carts:is_rail(pointed_thing.under) then
-		local rail = node.name
-		node.name = node_name
-		minetest.swap_node(pointed_thing.under, node)
-		M(pointed_thing.under):set_string("removed_rail", rail)
+		switch_to_node(pointed_thing.under, node_name, owner, param2)
 	elseif carts:is_rail(pointed_thing.above) then
-		local rail = node.name
-		node.name = node_name
-		minetest.swap_node(pointed_thing.above, node)
-		M(pointed_thing.above):set_string("removed_rail", rail)
+		switch_to_node(pointed_thing.above, node_name, owner, param2)
 	else
 		return
 	end
@@ -66,15 +84,42 @@ function minecart.node_on_place(itemstack, placer, pointed_thing, node_name)
 end
 
 function minecart.node_on_punch(pos, node, puncher, pointed_thing, entity_name)
+	local ndef = minetest.registered_nodes[node.name]
+	local cargo = {}
+	-- Player digs cart by sneak-punch
+	if puncher and puncher:get_player_control().sneak then
+		-- Pick up cart
+		if ndef.can_dig and ndef.can_dig(pos, puncher) then
+			local inv = puncher:get_inventory()
+			if not (creative and creative.is_enabled_for
+					and creative.is_enabled_for(puncher:get_player_name()))
+					or not inv:contains_item("main", node.name) then
+				local leftover = inv:add_item("main", node.name)
+				-- If no room in inventory add a replacement cart to the world
+				if not leftover:is_empty() then
+					minetest.add_item(pos, leftover)
+				end
+			end
+			node.name = M(pos):get_string("removed_rail")
+			minetest.remove_node(pos)
+			minetest.add_node(pos, node)
+		end
+		return
+	end
+	-- start cart
 	node.name = M(pos):get_string("removed_rail")
 	if node.name ~= "" then
-		minetest.swap_node(pos, node)
+		if ndef.get_cargo then
+			cargo = ndef.get_cargo(pos)
+		end
+		minetest.add_node(pos, node)
 		local obj = minetest.add_entity(pos, entity_name)
-		minecart.add_cart_to_monitoring(obj, puncher:get_player_name())		
-		obj:punch(puncher, 1, {
+		local owner = puncher and puncher:get_player_name()
+		minecart.add_cart_to_monitoring(obj, owner, cargo)		
+		obj:punch(puncher or obj, 1, {
 				full_punch_interval = 1.0,
 				damage_groups = {fleshy = 1},
-			}, minetest.facedir_to_dir(0))
+			})
 	end
 end
 
@@ -84,7 +129,7 @@ end
 
 
 function minecart:on_punch(puncher, time_from_last_punch, tool_capabilities, direction)
-	print("punched")
+	print("on_punch", direction)
 	local pos = self.object:get_pos()
 	local vel = self.object:get_velocity()
 	if not self.railtype or vector.equals(vel, {x=0, y=0, z=0}) then
@@ -232,17 +277,21 @@ local function rail_on_step(self, dtime)
 		self.object:set_velocity(vel)
 		self.old_dir.y = 0
 	elseif vector.equals(vel, {x=0, y=0, z=0}) then
-		------------------------------- changed
-		minecart.stopped(self, pos)
-		------------------------------- changed
+		if minecart.get_route_key(pos) then
+			------------------------------- changed
+			local cargo = minecart.stopped(self, pos)
+			local param2 = minetest.dir_to_facedir(self.old_dir)
+			switch_to_node(vector.round(pos), self.node_name, self.owner, param2, cargo)
+			minecart.on_dig(self)
+			self.object:remove()
+			------------------------------- changed
+		end
 		return
 	end
 
 	local cart_dir = carts:velocity_to_dir(vel)
 	local same_dir = vector.equals(cart_dir, self.old_dir)
 	local update = {}
-
-	print("rail_on_step 1", P2S(pos), P2S(vel), self.punched)
 
 	if self.old_pos and not self.punched and same_dir then
 		local flo_pos = vector.round(pos)
@@ -369,7 +418,6 @@ local function rail_on_step(self, dtime)
 		end
 	end
 
-	print("rail_on_step 2", P2S(pos), P2S(vel), self.punched)
 	self.object:set_acceleration(new_acc)
 	self.old_pos = vector.round(pos)
 	if not vector.equals(dir, {x=0, y=0, z=0}) and not stop_wiggle then
