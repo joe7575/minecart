@@ -27,8 +27,29 @@ local param2_to_dir = {[0]=
 	{x=0,  y=1,  z=0}
 }
 
--- Registered foreign node carts
-minecart.ValidCartNodes = {}
+-- Registered carts
+local tValidCarts = {} -- [<cart_name_stopped>] =  <cart_name_running>
+local lValidCartNodes = {}
+local tValidCartEntities = {}
+
+minetest.tValidCarts = tValidCarts
+
+function minecart.register_cart_names(cart_name_stopped, cart_name_running)
+	tValidCarts[cart_name_stopped] = cart_name_running
+	
+	if minetest.registered_nodes[cart_name_stopped] then
+		lValidCartNodes[#lValidCartNodes+1] = cart_name_stopped
+	end
+	if minetest.registered_nodes[cart_name_running] then
+		lValidCartNodes[#lValidCartNodes+1] = cart_name_running
+	end
+	if minetest.registered_entities[cart_name_stopped] then
+		tValidCartEntities[cart_name_stopped] = true
+	end
+	if minetest.registered_entities[cart_name_running] then
+		tValidCartEntities[cart_name_running] = true
+	end
+end
 
 local function is_air_like(name)
 	local ndef = minetest.registered_nodes[name]
@@ -44,11 +65,32 @@ function minecart.get_next_node(pos, param2)
 	return pos2, node
 end
 
-function minecart.check_cart(pos, param2, radius)	
+-- check if cart can be pushed
+function minecart.check_cart_for_pushing(pos, param2, radius)	
 	local pos2 = param2 and vector.add(pos, param2_to_dir[param2]) or pos
-	local node = minetest.get_node(pos2)
 	
-	if minecart.ValidCartNodes[node.name] then
+	if minetest.find_node_near(pos2, radius or 0.5, lValidCartNodes, true) then
+		return true
+	end
+	
+	for _, object in pairs(minetest.get_objects_inside_radius(pos2, radius or 0.5)) do
+		--print(object:get_entity_name(), tValidCartEntities[object:get_entity_name()])
+		if tValidCartEntities[object:get_entity_name()] then
+			local vel = object:get_velocity()
+			if vector.equals(vel, {x=0, y=0, z=0}) then  -- still standing?
+				return true
+			end
+		end
+	end
+	
+	return false
+end
+
+-- check if cargo can be loaded
+function minecart.check_cart_for_loading(pos, param2, radius)	
+	local pos2 = param2 and vector.add(pos, param2_to_dir[param2]) or pos
+	
+	if minetest.find_node_near(pos2, radius or 0.5, lValidCartNodes, true) then
 		return true
 	end
 	
@@ -65,7 +107,8 @@ function minecart.check_cart(pos, param2, radius)
 end
 
 local get_next_node = minecart.get_next_node
-local check_cart = minecart.check_cart
+local check_cart_for_loading = minecart.check_cart_for_loading
+local check_cart_for_pushing = minecart.check_cart_for_pushing
 
 -- Take the given number of items from the inv.
 -- Returns nil if ItemList is empty.
@@ -117,7 +160,7 @@ function minecart.put_items(pos, param2, stack)
 		if leftover:get_count() > 0 then
 			return leftover
 		end
-	elseif is_air_like(node.name) or check_cart(npos) then
+	elseif is_air_like(node.name) or check_cart_for_loading(npos) then
 		minetest.add_item(npos, stack)
 	else
 		local ndef = minetest.registered_nodes[node.name]
@@ -152,21 +195,23 @@ function minecart.untake_items(pos, param2, stack)
 	end
 end
 
-function minecart.punch_cart(pos, param2, radius)
-	local pos2 = minecart.get_next_node(pos, param2)
-	local node = minetest.get_node(pos2)
+function minecart.punch_cart(pos, param2, radius, dir)
+	local pos2 = param2 and vector.add(pos, param2_to_dir[param2]) or pos
 	
-	if minecart.ValidCartNodes[node.name] then
-		minecart.node_on_punch(pos2, node, nil, nil, minecart.ValidCartNodes[node.name])
+	local pos3 = minetest.find_node_near(pos2, radius or 0.5, lValidCartNodes, true)
+	if pos3 then
+		local node = minetest.get_node(pos3)
+		--print(node.name)
+		minecart.node_on_punch(pos3, node, nil, nil, tValidCarts[node.name], dir)
 		return true
 	end
 	
 	for _, object in pairs(minetest.get_objects_inside_radius(pos2, radius or 0.5)) do
-		if object:get_entity_name() == "minecart:cart" then
+		if tValidCartEntities[object:get_entity_name()] then
 			object:punch(object, 1.0, {
 				full_punch_interval = 1.0,
 				damage_groups = {fleshy = 1},
-			}, minetest.facedir_to_dir(0))
+			}, dir)
 			break -- start only one cart
 		end
 	end

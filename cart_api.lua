@@ -18,6 +18,9 @@ local S = minecart.S
 local P2S = function(pos) if pos then return minetest.pos_to_string(pos) end end
 local S2P = minetest.string_to_pos
 
+-- register cart here, because entity is already registered
+minecart.register_cart_names("minecart:cart", "minecart:cart")
+
 function minecart.register_cart_entity(entity_name, node_name, entity_def)
 	entity_def.velocity = {x=0, y=0, z=0} -- only used on punch
 	entity_def.old_dir = {x=1, y=0, z=0} -- random value to start the cart on punch
@@ -26,7 +29,7 @@ function minecart.register_cart_entity(entity_name, node_name, entity_def)
 	entity_def.node_name = node_name
 	minetest.register_entity(entity_name, entity_def)
 	-- register node for punching
-	minecart.ValidCartNodes[node_name] = entity_name
+	minecart.register_cart_names(node_name, entity_name)
 end
 
 local function switch_to_node(pos, node_name, owner, param2, cargo)
@@ -83,7 +86,7 @@ function minecart.node_on_place(itemstack, placer, pointed_thing, node_name)
 	return itemstack
 end
 
-function minecart.node_on_punch(pos, node, puncher, pointed_thing, entity_name)
+function minecart.node_on_punch(pos, node, puncher, pointed_thing, entity_name, dir)
 	local ndef = minetest.registered_nodes[node.name]
 	local cargo = {}
 	-- Player digs cart by sneak-punch
@@ -101,6 +104,9 @@ function minecart.node_on_punch(pos, node, puncher, pointed_thing, entity_name)
 				end
 			end
 			node.name = M(pos):get_string("removed_rail")
+			if node.name == "" then
+				node.name = "carts:rail"
+			end
 			minetest.remove_node(pos)
 			minetest.add_node(pos, node)
 		end
@@ -119,7 +125,7 @@ function minecart.node_on_punch(pos, node, puncher, pointed_thing, entity_name)
 		obj:punch(puncher or obj, 1, {
 				full_punch_interval = 1.0,
 				damage_groups = {fleshy = 1},
-			})
+			}, dir)
 	end
 end
 
@@ -129,7 +135,7 @@ end
 
 
 function minecart:on_punch(puncher, time_from_last_punch, tool_capabilities, direction)
-	print("on_punch", direction)
+	--print("on_punch", direction)
 	local pos = self.object:get_pos()
 	local vel = self.object:get_velocity()
 	if not self.railtype or vector.equals(vel, {x=0, y=0, z=0}) then
@@ -138,7 +144,7 @@ function minecart:on_punch(puncher, time_from_last_punch, tool_capabilities, dir
 	end
 	-- Punched by non-player
 	if not puncher or not puncher:is_player() then
-		local cart_dir = carts:get_rail_direction(pos, self.old_dir, nil, nil, self.railtype)
+		local cart_dir = carts:get_rail_direction(pos, direction, nil, nil, self.railtype)
 		if vector.equals(cart_dir, {x=0, y=0, z=0}) then
 			return
 		end
@@ -167,11 +173,12 @@ function minecart:on_punch(puncher, time_from_last_punch, tool_capabilities, dir
 			carts:manage_attachment(player, nil)
 		end
 		-- Pick up cart
+		local node_name = self.node_name or "minecart:cart"
 		local inv = puncher:get_inventory()
 		if not (creative and creative.is_enabled_for
 				and creative.is_enabled_for(puncher:get_player_name()))
-				or not inv:contains_item("main", self.name) then
-			local leftover = inv:add_item("main", self.name)
+				or not inv:contains_item("main", node_name) then
+			local leftover = inv:add_item("main", node_name)
 			-- If no room in inventory add a replacement cart to the world
 			if not leftover:is_empty() then
 				minetest.add_item(self.object:get_pos(), leftover)
@@ -258,9 +265,24 @@ local v3_len = vector.length
 
 local function rail_on_step(self, dtime)
 	local vel = self.object:get_velocity()
-	------------------------------------ changed
 	local pos = self.object:get_pos()
 	
+	if self.punched then
+		minecart.start_run(self, pos, vel, self.driver)
+		vel = vector.add(vel, self.velocity)
+		self.object:set_velocity(vel)
+		self.old_dir.y = 0
+	elseif vector.equals(vel, {x=0, y=0, z=0}) then
+		if minecart.get_route_key(pos) then
+			local cargo = minecart.stopped(self, pos)
+			local param2 = minetest.dir_to_facedir(self.old_dir)
+			switch_to_node(vector.round(pos), self.node_name, self.owner, param2, cargo)
+			minecart.on_dig(self)
+			self.object:remove()
+		end
+		return
+	end
+
 	-- cart position correction on slopes
 	local rot = self.object:get_rotation()
 	if rot.x ~= 0 then
@@ -268,27 +290,7 @@ local function rail_on_step(self, dtime)
 	end
 	
 	minecart.store_next_waypoint(self, pos, vel)
-	------------------------------------ changed
-	if self.punched then
-		------------------------------- changed
-		minecart.start_run(self, pos, vel, self.driver)
-		------------------------------- changed
-		vel = vector.add(vel, self.velocity)
-		self.object:set_velocity(vel)
-		self.old_dir.y = 0
-	elseif vector.equals(vel, {x=0, y=0, z=0}) then
-		if minecart.get_route_key(pos) then
-			------------------------------- changed
-			local cargo = minecart.stopped(self, pos)
-			local param2 = minetest.dir_to_facedir(self.old_dir)
-			switch_to_node(vector.round(pos), self.node_name, self.owner, param2, cargo)
-			minecart.on_dig(self)
-			self.object:remove()
-			------------------------------- changed
-		end
-		return
-	end
-
+	
 	local cart_dir = carts:velocity_to_dir(vel)
 	local same_dir = vector.equals(cart_dir, self.old_dir)
 	local update = {}
@@ -304,13 +306,6 @@ local function rail_on_step(self, dtime)
 
 	local ctrl, player
 
-	-- Get player controls
---	if self.driver then
---		player = minetest.get_player_by_name(self.driver)
---		if player then
---			ctrl = player:get_player_control()
---		end
---	end
 
 	local stop_wiggle = false
 	if self.old_pos and same_dir then

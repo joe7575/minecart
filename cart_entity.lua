@@ -80,7 +80,7 @@ function cart_entity:on_punch(puncher, time_from_last_punch, tool_capabilities, 
 	end
 	-- Punched by non-player
 	if not puncher or not puncher:is_player() then
-		local cart_dir = carts:get_rail_direction(pos, self.old_dir, nil, nil, self.railtype)
+		local cart_dir = carts:get_rail_direction(pos, direction, nil, nil, self.railtype)
 		if vector.equals(cart_dir, {x=0, y=0, z=0}) then
 			return
 		end

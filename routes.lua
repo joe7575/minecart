@@ -201,11 +201,16 @@ end
 -- Monitoring
 --
 local function spawn_cart(pos, vel, item)
-	local obj = minetest.add_entity(pos, item.entity_name or "minecart:cart", nil)
-	obj:set_velocity(vel)
-	local id = minecart.add_cart_to_monitoring(obj, item.owner)
-	minetest.log("info", "[minecart] Cart "..id.." spawned again.")
-	return id
+--	local node = minetest.get_node(pos)
+--	if not minetest.tValidCarts[node.name] then
+	local pos2 = vector.round(pos)
+	if carts:is_rail(pos2) or carts:is_rail({x = pos2.x, y = pos2.y-1, z = pos2.z}) then
+		local obj = minetest.add_entity(pos, item.entity_name or "minecart:cart", nil)
+		obj:set_velocity(vel)
+		local id = minecart.add_cart_to_monitoring(obj, item.owner)
+		minetest.log("info", "[minecart] Cart "..id.." spawned again.")
+		return id
+	end
 end
 
 local function calc_pos_and_vel(item)
@@ -216,7 +221,8 @@ local function calc_pos_and_vel(item)
 		if waypoint then
 			return minetest.string_to_pos(waypoint[1]), minetest.string_to_pos(waypoint[2])
 		end
-	elseif item.last_pos then
+	end
+	if item.last_pos then
 		return item.last_pos, item.last_vel
 	end
 	return item.start_pos, {x=0, y=0, z=0}
@@ -225,7 +231,7 @@ end
 local function monitoring()
 	local to_be_added = {}
 	for key, item in pairs(CartsOnRail) do
-		print("Cart:", key, P2S(item.start_pos), item.owner)
+		--print("Cart:", key, P2S(item.start_pos), item.owner)
 		if not item.recording then
 			local entity = minetest.luaentities[key]
 			if entity then  -- cart in loaded area
@@ -240,17 +246,18 @@ local function monitoring()
 						minecart.attach_cargo(entity, pos)
 					end
 					entity.object:remove()
-				elseif not item.start_key then
-					-- store last pos from cart without route
-					item.last_pos, item.last_vel = pos, vel
 				end
+				-- store last pos from cart without route
+				item.last_pos, item.last_vel = pos, vel
 			else  -- cart in unloaded area
 				local pos, vel = calc_pos_and_vel(item)
 				if pos and vel then
 					if minetest.get_node_or_nil(pos) then  -- in loaded area
 						local id = spawn_cart(pos, vel, item)
-						to_be_added[id] = table.copy(item)
-						CartsOnRail[key] = nil
+						if id then
+							to_be_added[id] = table.copy(item)
+							CartsOnRail[key] = nil
+						end
 					end
 				else
 					CartsOnRail[key] = nil

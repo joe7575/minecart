@@ -88,11 +88,13 @@ minetest.register_node("minecart:buffer", {
 		if time > 0 then
 			local hash = minetest.hash_node_position(pos)
 			local param2 = (minetest.get_node(pos).param2 + 2) % 4
-			if minecart.check_cart(pos, param2) then
+			if minecart.check_cart_for_pushing(pos, param2) then
 				if StopTime[hash] then
 					if StopTime[hash] < minetest.get_gametime() then
 						StopTime[hash] = nil
-						minecart.punch_cart(pos, param2)
+						local node = minetest.get_node(pos)
+						local dir = minetest.facedir_to_dir(node.param2)
+						minecart.punch_cart(pos, param2, 0, dir)
 					end
 				else
 					StopTime[hash] = minetest.get_gametime() + time
