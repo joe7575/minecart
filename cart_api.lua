@@ -138,10 +138,24 @@ function minecart:on_punch(puncher, time_from_last_punch, tool_capabilities, dir
 	--print("on_punch", direction)
 	local pos = self.object:get_pos()
 	local vel = self.object:get_velocity()
-	if not self.railtype or vector.equals(vel, {x=0, y=0, z=0}) then
+	local stopped = vector.equals(vel, {x=0, y=0, z=0})
+	
+	-- running carts can't be punched
+	if not stopped then
+		return
+	end
+	
+	if not self.railtype then
 		local node = minetest.get_node(pos).name
 		self.railtype = minetest.get_item_group(node, "connect_to_raillike")
 	end
+	
+	-- Punched by non-authorized player
+	if puncher and self.owner and self.owner ~= puncher:get_player_name() 
+			and not minetest.check_player_privs(puncher:get_player_name(), "minecart") then
+		return
+	end
+	
 	-- Punched by non-player
 	if not puncher or not puncher:is_player() then
 		local cart_dir = carts:get_rail_direction(pos, direction, nil, nil, self.railtype)
@@ -153,25 +167,12 @@ function minecart:on_punch(puncher, time_from_last_punch, tool_capabilities, dir
 		return
 	end
 	
-	-- Punched by non-authorized player
-	if puncher and self.owner and self.owner ~= puncher:get_player_name() 
-			and not minetest.check_player_privs(puncher:get_player_name(), "minecart") then
-		return
-	end
-	
 	-- Player digs cart by sneak-punch
 	if puncher:get_player_control().sneak then
 		if self.sound_handle then
 			minetest.sound_stop(self.sound_handle)
 		end
-		-- Detach driver and items
-		if self.driver then
-			if self.old_pos then
-				self.object:set_pos(self.old_pos)
-			end
-			local player = minetest.get_player_by_name(self.driver)
-			carts:manage_attachment(player, nil)
-		end
+		
 		-- Pick up cart
 		local node_name = self.node_name or "minecart:cart"
 		local inv = puncher:get_inventory()
@@ -188,15 +189,6 @@ function minecart:on_punch(puncher, time_from_last_punch, tool_capabilities, dir
 		self.object:remove()
 		return
 	end
---	------------------------------------ changed
---	minecart.start_recording(self, pos, vel, puncher)
---	------------------------------------ changed
---	-- Player punches cart to alter velocity
---	if puncher:get_player_name() == self.driver then
---		if math.abs(vel.x + vel.z) > carts.punch_speed_max then
---			return
---		end
---	end
 
 	local punch_dir = carts:velocity_to_dir(puncher:get_look_dir())
 	punch_dir.y = 0
@@ -204,29 +196,10 @@ function minecart:on_punch(puncher, time_from_last_punch, tool_capabilities, dir
 	if vector.equals(cart_dir, {x=0, y=0, z=0}) then
 		return
 	end
-
-	local punch_interval = 1
-	if tool_capabilities and tool_capabilities.full_punch_interval then
-		punch_interval = tool_capabilities.full_punch_interval
-	end
-	time_from_last_punch = math.min(time_from_last_punch or punch_interval, punch_interval)
-	local f = 2 * (time_from_last_punch / punch_interval)
-
-	------------------------------------ changed
-	if vector.equals(vel, {x=0, y=0, z=0}) then
-		self.velocity = vector.multiply(cart_dir, f)
-	else
-		self.velocity = {x=0, y=0, z=0}
-	end
-	------------------------------------ changed
+	
+	self.velocity = vector.multiply(cart_dir, 2)
 	self.old_dir = cart_dir
 	self.punched = true
-end
-
-local function rail_on_step_event(handler, obj, dtime)
-	if handler then
-		handler(obj, dtime)
-	end
 end
 
 -- sound refresh interval = 1.0sec
@@ -261,8 +234,6 @@ local function get_railparams(pos)
 	return carts.railparams[node.name] or {}
 end
 
-local v3_len = vector.length
-
 local function rail_on_step(self, dtime)
 	local vel = self.object:get_velocity()
 	local pos = self.object:get_pos()
@@ -289,8 +260,6 @@ local function rail_on_step(self, dtime)
 		pos.y = pos.y - 0.5
 	end
 	
-	minecart.store_next_waypoint(self, pos, vel)
-	
 	local cart_dir = carts:velocity_to_dir(vel)
 	local same_dir = vector.equals(cart_dir, self.old_dir)
 	local update = {}
@@ -312,7 +281,7 @@ local function rail_on_step(self, dtime)
 		-- Detection for "skipping" nodes (perhaps use average dtime?)
 		-- It's sophisticated enough to take the acceleration in account
 		local acc = self.object:get_acceleration()
-		local distance = dtime * (v3_len(vel) + 0.5 * dtime * v3_len(acc))
+		local distance = dtime * (vector.length(vel) + 0.5 * dtime * vector.length(acc))
 
 		local new_pos, new_dir = carts:pathfinder(
 			pos, self.old_pos, self.old_dir, distance, ctrl,
@@ -428,7 +397,6 @@ local function rail_on_step(self, dtime)
 	railparams = railparams or get_railparams(pos)
 
 	if not (update.vel or update.pos) then
-		rail_on_step_event(railparams.on_step, self, dtime)
 		return
 	end
 
@@ -474,9 +442,6 @@ local function rail_on_step(self, dtime)
 			self.object:move_to(pos)
 		end
 	end
-
-	-- call event handler
-	rail_on_step_event(railparams.on_step, self, dtime)
 end
 
 function minecart:on_step(dtime)
