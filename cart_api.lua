@@ -217,7 +217,7 @@ local function rail_sound(self, dtime)
 		self.sound_handle = nil
 		minetest.after(0.2, minetest.sound_stop, handle)
 	end
-	local vel = self.object:get_velocity()
+	local vel = self.object:get_velocity() or {x=0, y=0, z=0}
 	local speed = vector.length(vel)
 	if speed > 0 then
 		self.sound_handle = minetest.sound_play(
