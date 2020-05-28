@@ -57,8 +57,7 @@ local function add_cargo_to_player_inv(self, pos, puncher)
 	local inv = puncher:get_inventory()
 	for _, obj in pairs(minetest.get_objects_inside_radius(pos, 1)) do
 		local entity = obj:get_luaentity()
-		if not obj:is_player() and entity and 
-				not entity.physical_state and entity.name == "__builtin:item" then
+		if not obj:is_player() and entity and entity.name == "__builtin:item" then
 			obj:remove()
 			local item = ItemStack(entity.itemstring)
 			local leftover = inv:add_item("main", item)
