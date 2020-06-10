@@ -8,140 +8,100 @@
 	MIT
 	See license.txt for more information
 	
-	Cart API for external cart definitions on a node based model
+	Cart library functions (level 1)
 	
 ]]--
+
+-- Notes:
+-- 1) Only the owner can punch der cart
+-- 2) Only the owner can start the recording
+-- 3) But any player can act as cargo, cart punched by owner or buffer
+
 
 -- for lazy programmers
 local M = minetest.get_meta
 local S = minecart.S
 local P2S = function(pos) if pos then return minetest.pos_to_string(pos) end end
 local S2P = minetest.string_to_pos
+local MP = minetest.get_modpath("minecart")
 
--- register cart here, because entity is already registered
-minecart.register_cart_names("minecart:cart", "minecart:cart")
+local api = {}
 
-function minecart.register_cart_entity(entity_name, node_name, entity_def)
-	entity_def.velocity = {x=0, y=0, z=0} -- only used on punch
-	entity_def.old_dir = {x=1, y=0, z=0} -- random value to start the cart on punch
-	entity_def.old_pos = nil
-	entity_def.old_switch = 0
-	entity_def.node_name = node_name
-	minetest.register_entity(entity_name, entity_def)
-	-- register node for punching
-	minecart.register_cart_names(node_name, entity_name)
-end
-
-local function switch_to_node(pos, node_name, owner, param2, cargo)
-	local node = minetest.get_node(pos)
-	local rail = node.name
-	local ndef = minetest.registered_nodes[node_name]
-	if ndef then
-		node.name = node_name
-		node.param2 = param2
-		minetest.add_node(pos, node)
-		M(pos):set_string("removed_rail", rail)
-		M(pos):set_string("owner", owner)
-		if ndef.after_place_node then
-			ndef.after_place_node(pos)
-		end
-		if cargo and ndef.set_cargo then
-			ndef.set_cargo(pos, cargo)
-		end
-	end
+function api:init(is_node_cart)
+	local lib
 	
-end
-
-function minecart.node_on_place(itemstack, placer, pointed_thing, node_name)
-	local under = pointed_thing.under
-	local node = minetest.get_node(under)
-	local udef = minetest.registered_nodes[node.name]
-	if udef and udef.on_rightclick and
-			not (placer and placer:is_player() and
-			placer:get_player_control().sneak) then
-		return udef.on_rightclick(under, node, placer, itemstack,
-			pointed_thing) or itemstack
-	end
-
-	if not pointed_thing.type == "node" then
-		return
-	end
-	local owner = placer:get_player_name()
-	local param2 = minetest.dir_to_facedir(placer:get_look_dir())
-	if carts:is_rail(pointed_thing.under) then
-		switch_to_node(pointed_thing.under, node_name, owner, param2)
-	elseif carts:is_rail(pointed_thing.above) then
-		switch_to_node(pointed_thing.above, node_name, owner, param2)
+	if is_node_cart then
+		lib = dofile(MP.."/cart_lib2n.lua")
 	else
-		return
+		lib = dofile(MP.."/cart_lib2e.lua")
 	end
-
-	minetest.sound_play({name = "default_place_node_metal", gain = 0.5},
-		{pos = pointed_thing.above})
-
-	if not (creative and creative.is_enabled_for
-			and creative.is_enabled_for(placer:get_player_name())) then
-		itemstack:take_item()
-	end
-	return itemstack
-end
-
-function minecart.node_on_punch(pos, node, puncher, pointed_thing, entity_name, dir)
-	local ndef = minetest.registered_nodes[node.name]
-	local cargo = {}
-	-- Player digs cart by sneak-punch
-	if puncher and puncher:get_player_control().sneak then
-		-- Pick up cart
-		if ndef.can_dig and ndef.can_dig(pos, puncher) then
-			local inv = puncher:get_inventory()
-			if not (creative and creative.is_enabled_for
-					and creative.is_enabled_for(puncher:get_player_name()))
-					or not inv:contains_item("main", node.name) then
-				local leftover = inv:add_item("main", node.name)
-				-- If no room in inventory add a replacement cart to the world
-				if not leftover:is_empty() then
-					minetest.add_item(pos, leftover)
-				end
-			end
-			node.name = M(pos):get_string("removed_rail")
-			if node.name == "" then
-				node.name = "carts:rail"
-			end
-			minetest.remove_node(pos)
-			minetest.add_node(pos, node)
-		end
-		return
-	end
-	-- start cart
-	node.name = M(pos):get_string("removed_rail")
-	if node.name ~= "" then
-		if ndef.get_cargo then
-			cargo = ndef.get_cargo(pos)
-		end
-		minetest.add_node(pos, node)
-		local obj = minetest.add_entity(pos, entity_name)
-		local owner = puncher and puncher:get_player_name()
-		minecart.add_cart_to_monitoring(obj, owner, cargo)		
-		obj:punch(puncher or obj, 1, {
-				full_punch_interval = 1.0,
-				damage_groups = {fleshy = 1},
-			}, dir)
+		
+	-- add lib to local api
+	for k,v in pairs(lib) do
+		api[k] = v
 	end
 end
 
-function minecart:on_activate(staticdata, dtime_s)
+-- Player get on / off
+function api:on_rightclick(clicker)
+	if not clicker or not clicker:is_player() then
+		return
+	end
+	local player_name = clicker:get_player_name()
+	if self.driver and player_name == self.driver then
+		self.driver = nil
+		carts:manage_attachment(clicker, nil)
+	elseif not self.driver then
+		self.driver = player_name
+		carts:manage_attachment(clicker, self.object)
+
+		-- player_api does not update the animation
+		-- when the player is attached, reset to default animation
+		player_api.set_animation(clicker, "stand")
+	end
+end
+
+function api:on_activate(staticdata, dtime_s)
 	self.object:set_armor_groups({immortal=1})
 end
 
+function api:on_detach_child(child)
+	if child and child:get_player_name() == self.driver then
+		self.driver = nil
+	end
+end
 
-function minecart:on_punch(puncher, time_from_last_punch, tool_capabilities, direction)
-	--print("on_punch", direction)
+function api:on_punch(puncher, time_from_last_punch, tool_capabilities, direction)
 	local pos = self.object:get_pos()
 	local vel = self.object:get_velocity()
 	local stopped = vector.equals(vel, {x=0, y=0, z=0})
+	local is_minecart = self.node_name == nil
+	local node_name = self.node_name or "minecart:cart"
+	local puncher_name = puncher and puncher:is_player() and puncher:get_player_name()
+	local puncher_is_owner = puncher_name and (not self.owner or 
+			puncher_name == self.owner or
+			minetest.check_player_privs(puncher_name, "minecart"))
+	local puncher_is_driver = self.driver and self.driver == puncher_name
+	local sneak_punch = puncher_name and puncher:get_player_control().sneak
+	local no_cargo = next(self.cargo or {}) == nil
 	
-	-- running carts can't be punched
+	print("on_punch", puncher_name, puncher_is_owner, self.owner)
+	-- driver wants to leave/remove the empty Minecart by sneak-punch
+	if is_minecart and sneak_punch and puncher_is_driver and no_cargo then
+		if puncher_is_owner then
+			api.remove_cart(self, pos, puncher)
+		end
+		carts:manage_attachment(puncher, nil)
+		return
+	end
+	
+	-- running carts can't be punched or removed from external
 	if not stopped then
+		return
+	end
+	
+	-- Punched by non-authorized player
+	if puncher_name and not puncher_is_owner then
 		return
 	end
 	
@@ -150,46 +110,48 @@ function minecart:on_punch(puncher, time_from_last_punch, tool_capabilities, dir
 		self.railtype = minetest.get_item_group(node, "connect_to_raillike")
 	end
 	
-	-- Punched by non-authorized player
-	if puncher and self.owner and self.owner ~= puncher:get_player_name() 
-			and not minetest.check_player_privs(puncher:get_player_name(), "minecart") then
-		return
-	end
-	
 	-- Punched by non-player
-	if not puncher or not puncher:is_player() then
+	if not puncher_name then
 		local cart_dir = carts:get_rail_direction(pos, direction, nil, nil, self.railtype)
 		if vector.equals(cart_dir, {x=0, y=0, z=0}) then
 			return
 		end
 		self.velocity = vector.multiply(cart_dir, 2)
 		self.punched = true
+		api.load_cargo(self, pos)
+		minecart.start_cart(pos, self.myID)
 		return
 	end
 	
-	-- Player digs cart by sneak-punch
-	if puncher:get_player_control().sneak then
-		if self.sound_handle then
-			minetest.sound_stop(self.sound_handle)
+	print(22)
+	-- Sneak-punched by owner
+	if sneak_punch then
+	print(33)
+		-- Unload the cargo
+		if api.add_cargo_to_player_inv(self, pos, puncher) then
+			return
 		end
-		
+		-- detach driver
+		if self.driver then
+			carts:manage_attachment(puncher_name, nil)
+		end
 		-- Pick up cart
-		local node_name = self.node_name or "minecart:cart"
-		local inv = puncher:get_inventory()
-		if not (creative and creative.is_enabled_for
-				and creative.is_enabled_for(puncher:get_player_name()))
-				or not inv:contains_item("main", node_name) then
-			local leftover = inv:add_item("main", node_name)
-			-- If no room in inventory add a replacement cart to the world
-			if not leftover:is_empty() then
-				minetest.add_item(self.object:get_pos(), leftover)
-			end
-		end
-		minecart.on_dig(self)
-		self.object:remove()
+		api.remove_cart(self, pos, puncher)
+	print(44)
 		return
 	end
+	
+	print(55)
+	-- Cart with driver punched to start recording
+	if puncher_is_driver then
+		minecart.start_recording(self, pos, vel, puncher)
+	else
+		minecart.start_cart(pos, self.myID)
+	end
 
+	api.load_cargo(self, pos)
+	
+    -- Normal punch by owner to start the cart
 	local punch_dir = carts:velocity_to_dir(puncher:get_look_dir())
 	punch_dir.y = 0
 	local cart_dir = carts:get_rail_direction(pos, punch_dir, nil, nil, self.railtype)
@@ -197,9 +159,17 @@ function minecart:on_punch(puncher, time_from_last_punch, tool_capabilities, dir
 		return
 	end
 	
+	local entity_name = minetest.tValidCarts[node_name]
+	
 	self.velocity = vector.multiply(cart_dir, 2)
 	self.old_dir = cart_dir
 	self.punched = true
+end
+
+local function rail_on_step_event(handler, obj, dtime)
+	if handler then
+		handler(obj, dtime)
+	end
 end
 
 -- sound refresh interval = 1.0sec
@@ -237,20 +207,27 @@ end
 local function rail_on_step(self, dtime)
 	local vel = self.object:get_velocity()
 	local pos = self.object:get_pos()
+	local stopped = vector.equals(vel, {x=0, y=0, z=0})
+	local is_minecart = self.node_name == nil
+	local recording = is_minecart and self.driver == self.owner
 	
+	if recording and not stopped then
+		minecart.store_next_waypoint(self, pos, vel)
+	end
+
 	if self.punched then
-		minecart.start_run(self, pos, vel, self.driver)
 		vel = vector.add(vel, self.velocity)
 		self.object:set_velocity(vel)
 		self.old_dir.y = 0
-	elseif vector.equals(vel, {x=0, y=0, z=0}) then
-		if minecart.get_route_key(pos) then
-			local cargo = minecart.stopped(self, pos)
-			local param2 = minetest.dir_to_facedir(self.old_dir)
-			switch_to_node(vector.round(pos), self.node_name, self.owner, param2, cargo)
-			minecart.on_dig(self)
-			self.object:remove()
+		self.stopped = false
+	elseif stopped and not self.stopped then
+		local param2 = minetest.dir_to_facedir(self.old_dir)
+		api.stop_cart(pos, self, self.node_name or "minecart:cart", param2)
+		if recording then
+			--minecart.stop_recording(self, pos, vel, self.driver)
 		end
+		api.unload_cargo(self, pos) 
+		self.stopped = true
 		return
 	end
 
@@ -275,6 +252,13 @@ local function rail_on_step(self, dtime)
 
 	local ctrl, player
 
+	-- Get player controls
+	if recording then
+		player = minetest.get_player_by_name(self.driver)
+		if player then
+			ctrl = player:get_player_control()
+		end
+	end
 
 	local stop_wiggle = false
 	if self.old_pos and same_dir then
@@ -306,13 +290,14 @@ local function rail_on_step(self, dtime)
 	local dir, switch_keys = carts:get_rail_direction(
 		pos, cart_dir, ctrl, self.old_switch, self.railtype
 	)
-	------------------------------- changed
-	if switch_keys then
+	
+	-- handle junctions
+	if switch_keys then  -- recording
 		minecart.set_junction(self, pos, dir, switch_keys)
-	else
+	else  -- normal run
 		dir, switch_keys = minecart.get_junction(self, pos, dir)
 	end
-	------------------------------- changed
+	
 	local dir_changed = not vector.equals(dir, self.old_dir)
 
 	local new_acc = {x=0, y=0, z=0}
@@ -397,6 +382,7 @@ local function rail_on_step(self, dtime)
 	railparams = railparams or get_railparams(pos)
 
 	if not (update.vel or update.pos) then
+		rail_on_step_event(railparams.on_step, self, dtime)
 		return
 	end
 
@@ -444,7 +430,9 @@ local function rail_on_step(self, dtime)
 	end
 end
 
-function minecart:on_step(dtime)
+function api:on_step(dtime)
 	rail_on_step(self, dtime)
 	rail_sound(self, dtime)
 end
+
+return api
