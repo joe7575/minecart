@@ -45,7 +45,7 @@ function api.get_station_name(pos)
 		if name ~= "" then
 			return name
 		end
-		return P2S(pos1)
+		return "-"
 	end
 end
 
@@ -57,7 +57,7 @@ function api.load_cart(pos, vel, item)
 	if myID then
 		-- Copy item data to cart entity
 		local entity = obj:get_luaentity()
-		entity.owner = item.owner or "unknown"
+		entity.owner = item.owner or ""
 		entity.userID = item.userID or 0
 		entity.cargo = item.cargo or {}
 		entity.myID = myID
@@ -67,7 +67,6 @@ function api.load_cart(pos, vel, item)
 		item.cargo = nil
 		-- Start cart
 		obj:set_velocity(vel)
-		print("load_cart", item.userID, myID, P2S(pos))
 		return myID
 	else
 		print("Entity has no ID")
@@ -84,7 +83,6 @@ function api.unload_cart(pos, vel, entity, item)
 		minetest.sound_stop(entity.sound_handle)
 		entity.sound_handle = nil
 	end
-	print("unload_cart", item.userID)
 end
 
 return api

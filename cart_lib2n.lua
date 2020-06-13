@@ -52,7 +52,6 @@ local function start_cart(pos, node_name, entity_name, puncher, dir)
 		local cargo = ndef.get_cargo and ndef.get_cargo(pos) or {}
 		-- swap node to rail
 		minetest.remove_node(pos)
-		print(rail, userID, cart_owner, cargo)
 		minetest.add_node(pos, {name = rail})
 		-- Add entity
 		local obj = minetest.add_entity(pos, entity_name)
@@ -64,13 +63,15 @@ local function start_cart(pos, node_name, entity_name, puncher, dir)
 			entity.owner = cart_owner
 			entity.userID = userID
 			entity.cargo = cargo
+			entity.myID = myID
 			obj:set_nametag_attributes({color = "#ffffff", text = cart_owner..": "..userID})
+			minecart.add_to_monitoring(obj, myID, cart_owner, userID)
+			minecart.node_at_station(cart_owner, userID, nil)
 			-- punch cart to prevent the stopped handling
 			obj:punch(puncher or obj, 1, {
 					full_punch_interval = 1.0,
 					damage_groups = {fleshy = 1},
 				}, dir)
-			minecart.add_to_monitoring(obj, cart_owner)
 			return myID
 		else
 			print("Entity has no ID")
@@ -79,13 +80,16 @@ local function start_cart(pos, node_name, entity_name, puncher, dir)
 end
 
 function api.stop_cart(pos, entity, node_name, param2)
+	print("stop_cart", node_name)
 	-- rail buffer reached?
 	if api.get_route_key(pos) then
 		-- Read entity data
-		local owner = entity.owner or "unknown"
+		local owner = entity.owner or ""
 		local userID = entity.userID or 0
 		local cargo = entity.cargo or {}
 		-- Remove entity
+		minecart.remove_from_monitoring(entity.myID)
+		minecart.node_at_station(owner, userID, pos)
 		entity.object:remove()
 		-- Add cart node
 		add_cart(pos, node_name, param2, owner, userID, cargo)
@@ -134,7 +138,6 @@ function api.add_cart(itemstack, placer, pointed_thing, node_name)
 end
 
 function api.node_on_punch(pos, node, puncher, pointed_thing, entity_name, dir)
-	print("node_on_punch")
 	local ndef = minetest.registered_nodes[node.name]
 	-- Player digs cart by sneak-punch
 	if puncher and puncher:get_player_control().sneak then

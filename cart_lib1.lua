@@ -78,14 +78,13 @@ function api:on_punch(puncher, time_from_last_punch, tool_capabilities, directio
 	local is_minecart = self.node_name == nil
 	local node_name = self.node_name or "minecart:cart"
 	local puncher_name = puncher and puncher:is_player() and puncher:get_player_name()
-	local puncher_is_owner = puncher_name and (not self.owner or 
+	local puncher_is_owner = puncher_name and (not self.owner or self.owner == "" or
 			puncher_name == self.owner or
 			minetest.check_player_privs(puncher_name, "minecart"))
 	local puncher_is_driver = self.driver and self.driver == puncher_name
 	local sneak_punch = puncher_name and puncher:get_player_control().sneak
 	local no_cargo = next(self.cargo or {}) == nil
 	
-	print("on_punch", puncher_name, puncher_is_owner, self.owner)
 	-- driver wants to leave/remove the empty Minecart by sneak-punch
 	if is_minecart and sneak_punch and puncher_is_driver and no_cargo then
 		if puncher_is_owner then
@@ -102,6 +101,7 @@ function api:on_punch(puncher, time_from_last_punch, tool_capabilities, directio
 	
 	-- Punched by non-authorized player
 	if puncher_name and not puncher_is_owner then
+		minetest.chat_send_player(puncher_name, S("[minecart] Cart is protected by ")..(self.owner or ""))
 		return
 	end
 	
@@ -123,10 +123,8 @@ function api:on_punch(puncher, time_from_last_punch, tool_capabilities, directio
 		return
 	end
 	
-	print(22)
 	-- Sneak-punched by owner
 	if sneak_punch then
-	print(33)
 		-- Unload the cargo
 		if api.add_cargo_to_player_inv(self, pos, puncher) then
 			return
@@ -137,11 +135,9 @@ function api:on_punch(puncher, time_from_last_punch, tool_capabilities, directio
 		end
 		-- Pick up cart
 		api.remove_cart(self, pos, puncher)
-	print(44)
 		return
 	end
 	
-	print(55)
 	-- Cart with driver punched to start recording
 	if puncher_is_driver then
 		minecart.start_recording(self, pos, vel, puncher)
@@ -224,10 +220,12 @@ local function rail_on_step(self, dtime)
 		local param2 = minetest.dir_to_facedir(self.old_dir)
 		api.stop_cart(pos, self, self.node_name or "minecart:cart", param2)
 		if recording then
-			--minecart.stop_recording(self, pos, vel, self.driver)
+			minecart.stop_recording(self, pos, vel, self.driver)
 		end
 		api.unload_cargo(self, pos) 
 		self.stopped = true
+		return
+	elseif stopped then
 		return
 	end
 
@@ -260,29 +258,6 @@ local function rail_on_step(self, dtime)
 		end
 	end
 
-	local stop_wiggle = false
-	if self.old_pos and same_dir then
-		-- Detection for "skipping" nodes (perhaps use average dtime?)
-		-- It's sophisticated enough to take the acceleration in account
-		local acc = self.object:get_acceleration()
-		local distance = dtime * (vector.length(vel) + 0.5 * dtime * vector.length(acc))
-
-		local new_pos, new_dir = carts:pathfinder(
-			pos, self.old_pos, self.old_dir, distance, ctrl,
-			self.old_switch, self.railtype
-		)
-
-		if new_pos then
-			-- No rail found: set to the expected position
-			pos = new_pos
-			update.pos = true
-			cart_dir = new_dir
-		end
-	elseif self.old_pos and self.old_dir.y ~= 1 and not self.punched then
-		-- Stop wiggle
-		stop_wiggle = true
-	end
-
 	local railparams
 
 	-- dir:         New moving direction of the cart
@@ -301,16 +276,15 @@ local function rail_on_step(self, dtime)
 	local dir_changed = not vector.equals(dir, self.old_dir)
 
 	local new_acc = {x=0, y=0, z=0}
-	if stop_wiggle or vector.equals(dir, {x=0, y=0, z=0}) then
+	-- no dir available
+	if vector.equals(dir, {x=0, y=0, z=0}) then
 		vel = {x = 0, y = 0, z = 0}
 		local pos_r = vector.round(pos)
 		if not carts:is_rail(pos_r, self.railtype)
 				and self.old_pos then
 			pos = self.old_pos
-		elseif not stop_wiggle then
-			pos = pos_r
 		else
-			pos.y = math.floor(pos.y + 0.5)
+			pos = pos_r
 		end
 		update.pos = true
 		update.vel = true
@@ -346,12 +320,7 @@ local function rail_on_step(self, dtime)
 			-- Try to make it similar to the original carts mod
 			acc = acc + speed_mod
 		else
-			-- Handbrake or coast
-			if ctrl and ctrl.down then
-				acc = acc - 3
-			else
-				acc = acc - 0.4
-			end
+			acc = acc - 0.4
 		end
 
 		new_acc = vector.multiply(dir, acc)
@@ -369,7 +338,7 @@ local function rail_on_step(self, dtime)
 
 	self.object:set_acceleration(new_acc)
 	self.old_pos = vector.round(pos)
-	if not vector.equals(dir, {x=0, y=0, z=0}) and not stop_wiggle then
+	if not vector.equals(dir, {x=0, y=0, z=0}) then
 		self.old_dir = vector.new(dir)
 	end
 	self.old_switch = switch_keys

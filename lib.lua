@@ -246,7 +246,7 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 			local cart_pos = S2P(player:get_meta():get_string("cart_pos"))
 			local userID = tonumber(fields.userID) or 0
 			M(cart_pos):set_int("userID", userID)
-			M(cart_pos):set_string("infotext", "cart number = "..userID)
+			M(cart_pos):set_string("infotext", player:get_player_name()..": "..userID)
 		end
 		return true
 	end

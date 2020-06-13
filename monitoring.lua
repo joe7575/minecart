@@ -12,8 +12,10 @@
 
 -- Some notes:
 -- 1) Entity IDs are volatile. For each server restart all carts get new IDs.
--- 2) Monitoring is performed for entities only. Stopped carts in from of
+-- 2) Monitoring is performed for entities only. Stopped carts in form of
 --    real nodes need no monitoring.
+-- 3) But nodes at startions have to call 'node_at_station' to be "visible"
+--    for the chat commands
 
 
 -- for lazy programmers
@@ -26,21 +28,13 @@ local lib = dofile(MP.."/cart_lib3.lua")
 
 local CartsOnRail = minecart.CartsOnRail  -- from storage.lua
 local get_route = minecart.get_route  -- from storage.lua
-
+local NodesAtStation = {}
 
 --
 -- Helper functions
 --
-local function get_object_id(object)
-	for id, entity in pairs(minetest.luaentities) do
-		if entity.object == object then
-			return id
-		end
-	end
-end
-
 local function calc_pos_and_vel(item)
-	if item.start_time and item.start_key then
+	if item.start_time and item.start_key then  -- cart on recorded route
 		local run_time = minetest.get_gametime() - item.start_time
 		local waypoints = get_route(item.start_key).waypoints
 		local waypoint = waypoints[run_time]
@@ -52,6 +46,10 @@ local function calc_pos_and_vel(item)
 		if carts:is_rail(item.last_pos, minetest.raillike_group("rail")) then
 			return item.last_pos, item.last_vel
 		end
+		item.last_pos.y = item.last_pos.y - 1
+		if carts:is_rail(item.last_pos, minetest.raillike_group("rail")) then
+			return item.last_pos, item.last_vel
+		end
 	end
 	return item.start_pos, {x=0, y=0, z=0}
 end
@@ -60,7 +58,6 @@ end
 -- Monitoring of cart entities
 --
 function minecart.add_to_monitoring(obj, myID, owner, userID)
-	print("add_to_monitoring", myID, userID)
 	local pos = vector.round(obj:get_pos())
 	CartsOnRail[myID] = {
 		start_key = lib.get_route_key(pos),
@@ -71,29 +68,36 @@ function minecart.add_to_monitoring(obj, myID, owner, userID)
 	}
 end
 
+-- Called after cart number formspec is closed
 function minecart.update_userID(myID, userID)
 	if CartsOnRail[myID] then
 		CartsOnRail[myID].userID = userID
 	end
 end
 
+-- When cart entity is removed
 function minecart.remove_from_monitoring(myID)
-	print("remove_from_monitoring", myID)
 	if myID then
 		CartsOnRail[myID] = nil
 	end
 end	
 
+-- For node carts at stations
+function minecart.node_at_station(owner, userID, pos)
+	NodesAtStation[owner] = NodesAtStation[owner] or {}
+	NodesAtStation[owner][userID] = pos
+end
+		
 function minecart.start_cart(pos, myID)
 	local item = CartsOnRail[myID]
 	if item and item.stopped then
 		item.stopped = false
+		item.start_pos = pos
 		-- cart started from a buffer?
 		local start_key = lib.get_route_key(pos)
 		if start_key then
 			item.start_time = minetest.get_gametime()
 			item.start_key = start_key
-			item.start_pos = pos
 			item.junctions = minecart.get_route(start_key).junctions
 			return true
 		end
@@ -118,7 +122,7 @@ local function monitoring()
 	local to_be_added = {}
 	for key, item in pairs(CartsOnRail) do
 		local entity = minetest.luaentities[key]
-		print("Cart:", key, P2S(item.last_pos), item.owner)
+		--print("Cart:", key, item.owner, item.myID, item.userID)
 		if entity then  -- cart entity running
 			local pos = entity.object:get_pos()
 			local vel = entity.object:get_velocity()
@@ -126,7 +130,7 @@ local function monitoring()
 				lib.unload_cart(pos, vel, entity, item)
 				item.stopped = vector.equals(vel, {x=0, y=0, z=0})
 			end
-			-- store last pos from cart without route
+			-- store last pos from cart
 			item.last_pos, item.last_vel = pos, vel
 		else  -- no cart running
 			local pos, vel = calc_pos_and_vel(item)
@@ -151,7 +155,10 @@ local function monitoring()
 	end
 	minetest.after(1, monitoring)
 end
-minetest.after(1, monitoring)
+-- delay the start to prevent cart disappear into nirvana
+minetest.register_on_mods_loaded(function()
+	minetest.after(10, monitoring)
+end)
 
 
 --
@@ -168,26 +175,155 @@ function minecart.get_cart_list()
 	return tbl
 end
 
--- hier umbauen nach userID und nicht Name
+local function get_cart_pos(query_pos, cart_pos)
+	local dist = math.floor(vector.distance(cart_pos, query_pos))
+	local station = lib.get_station_name(cart_pos)
+	return station or dist
+end
+
+local function get_cart_state(name, userID)
+	for id, item in pairs(CartsOnRail) do
+		if item.owner == name and item.userID == userID then
+			return item.stopped and "stopped" or "running", item.last_pos
+		end
+	end
+	return nil, nil
+end	
+
 minetest.register_chatcommand("mycart", {
 	params = "<cart-num>",
-	description = "Output cart state and position",
+	description = "Output cart state and position, or a list of carts, if no cart number is given.",
     func = function(name, param)
-		local userID = tonumber(param) or 0
-		for id, item in pairs(CartsOnRail) do
-			if item.owner == name and item.userID == userID then
-				local pos = P2S(vector.round(item.last_pos))
-				print(dump(item)) 
-				local state = item.stopped and "blocked" or "running"
-				local station = lib.get_station_name(item.last_pos)
-				if station then  -- stopped at buffer?
-					state = "stopped"
-					pos = station
-				end
-				return true, "Cart #"..userID.." "..state.." at "..pos.."  "
+		local userID = tonumber(param)
+		local query_pos = minetest.get_player_by_name(name):get_pos()
+		
+		if userID then
+			-- First check if it is a node cart at a station
+			local cart_pos = NodesAtStation[name] and NodesAtStation[name][userID]
+			if cart_pos then
+				local pos = get_cart_pos(query_pos, cart_pos)
+				return true, "Cart #"..userID.." stopped at "..pos.."  "
 			end
+			-- Check all running carts
+			local state, cart_pos = get_cart_state(name, userID)
+			if state then
+				local pos = get_cart_pos(query_pos, cart_pos)
+				if type(pos) == "string" then
+					return true, "Cart #"..userID.." stopped at "..pos.."  "
+				else
+					return true, "Cart #"..userID.." running "..pos.." m away  "
+				end
+			end
+			return false, "Cart #"..userID.." is unknown"
+		else
+			-- Output a list with all numbers
+			local tbl = {}
+			for userID, pos in pairs(NodesAtStation[name] or {}) do
+				tbl[#tbl + 1] = userID
+			end
+			for id, item in pairs(CartsOnRail) do
+				if item.owner == name then
+					tbl[#tbl + 1] = item.userID
+				end
+			end
+			return true, "List of carts: "..table.concat(tbl, ", ").."  "
 		end
-		return false, "Cart is unknown"
     end
 })
+
+function minecart.cmnd_cart_state(name, userID)
+	-- First check if it is a node cart at a station
+	local pos = NodesAtStation[name] and NodesAtStation[name][userID]
+	if pos then
+		return "stopped"
+	end
+	return get_cart_state(name, userID)
+end
+
+function minecart.cmnd_cart_location(name, userID, query_pos)
+	-- First check if it is a node cart at a station
+	local station = NodesAtStation[name] and NodesAtStation[name][userID]
+	if station then
+		return station
+	end
+	local state, cart_pos = get_cart_state(name, userID)
+	if state then
+		return get_cart_pos(query_pos, cart_pos)
+	end
+end
+
+minetest.register_on_mods_loaded(function()
+	if minetest.global_exists("techage") then
+		techage.icta_register_condition("cart_state", {
+			title = "read cart state",
+			formspec = {
+				{
+					type = "digits",
+					name = "number",
+					label = "cart number",
+					default = "",
+				},
+				{
+					type = "label", 
+					name = "lbl", 
+					label = "Read state from one of your carts", 
+				},
+			},
+			button = function(data, environ)  -- default button label
+				local number = tonumber(data.number) or 0
+				return 'cart_state('..number..')'
+			end,
+			code = function(data, environ) 
+				local s = 'minecart.cmnd_cart_state("%s", %u)'
+				local number = tonumber(data.number) or 0
+				return string.format(s, environ.owner, number),	"~= 0"
+			end,
+		})
+		techage.icta_register_condition("cart_location", {
+			title = "read cart location",
+			formspec = {
+				{
+					type = "digits",
+					name = "number",
+					label = "cart number",
+					default = "",
+				},
+				{
+					type = "label", 
+					name = "lbl", 
+					label = "Read location from one of your carts", 
+				},
+			},
+			button = function(data, environ)  -- default button label
+				local number = tonumber(data.number) or 0
+				return 'cart_loc('..number..')'
+			end,
+			code = function(data, environ) 
+				local s = 'minecart.cmnd_cart_location("%s", %u, env.pos)'
+				local number = tonumber(data.number) or 0
+				return string.format(s, environ.owner, number),	"~= 0"
+			end,
+		})
+		techage.lua_ctlr.register_function("cart_state", {
+			cmnd = function(self, num) 
+				num = tonumber(num) or 0
+				return minecart.cmnd_cart_state(self.meta.owner, num)
+			end,
+			help = " $cart_state(num)\n"..
+				" Read state from one of your carts.\n"..
+				' "num" is the cart number\n'..
+				' example: sts = $cart_state(2)'
+		})
+		techage.lua_ctlr.register_function("cart_location", {
+			cmnd = function(self, num) 
+				num = tonumber(num) or 0
+				return minecart.cmnd_cart_location(self.meta.owner, num, self.meta.pos)
+			end,
+			help = " $cart_location(num)\n"..
+				" Read location from one of your carts.\n"..
+				' "num" is the cart number\n'..
+				' example: sts = $cart_location(2)'
+		})
+	end
+end)
 
