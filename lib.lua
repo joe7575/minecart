@@ -246,7 +246,8 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 			local cart_pos = S2P(player:get_meta():get_string("cart_pos"))
 			local userID = tonumber(fields.userID) or 0
 			M(cart_pos):set_int("userID", userID)
-			M(cart_pos):set_string("infotext", player:get_player_name()..": "..userID)
+			M(cart_pos):set_string("infotext", minetest.get_color_escape_sequence("#FFFF00")..player:get_player_name()..": "..userID)
+			minecart.node_at_station(player:get_player_name(), userID, cart_pos)
 		end
 		return true
 	end
@@ -257,7 +258,7 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 			if obj then
 				local entity = obj:get_luaentity()
 				entity.userID = tonumber(fields.userID) or 0
-				obj:set_nametag_attributes({color = "#ffffff", text = entity.owner..": "..entity.userID})
+				obj:set_nametag_attributes({color = "#ffff00", text = entity.owner..": "..entity.userID})
 				minecart.update_userID(entity.myID, entity.userID)
 			end
 		end

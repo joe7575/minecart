@@ -155,8 +155,6 @@ function api:on_punch(puncher, time_from_last_punch, tool_capabilities, directio
 		return
 	end
 	
-	local entity_name = minetest.tValidCarts[node_name]
-	
 	self.velocity = vector.multiply(cart_dir, 2)
 	self.old_dir = cart_dir
 	self.punched = true
@@ -200,6 +198,7 @@ local function get_railparams(pos)
 	return carts.railparams[node.name] or {}
 end
 
+local v3_len = vector.length
 local function rail_on_step(self, dtime)
 	local vel = self.object:get_velocity()
 	local pos = self.object:get_pos()
@@ -207,10 +206,12 @@ local function rail_on_step(self, dtime)
 	local is_minecart = self.node_name == nil
 	local recording = is_minecart and self.driver == self.owner
 	
-	if recording and not stopped then
-		minecart.store_next_waypoint(self, pos, vel)
+	-- cart position correction on slopes
+	local rot = self.object:get_rotation()
+	if rot.x ~= 0 then
+		pos.y = pos.y - 0.5
 	end
-
+	
 	if self.punched then
 		vel = vector.add(vel, self.velocity)
 		self.object:set_velocity(vel)
@@ -228,13 +229,11 @@ local function rail_on_step(self, dtime)
 	elseif stopped then
 		return
 	end
-
-	-- cart position correction on slopes
-	local rot = self.object:get_rotation()
-	if rot.x ~= 0 then
-		pos.y = pos.y - 0.5
-	end
 	
+	if recording then
+		minecart.store_next_waypoint(self, pos, vel)
+	end
+
 	local cart_dir = carts:velocity_to_dir(vel)
 	local same_dir = vector.equals(cart_dir, self.old_dir)
 	local update = {}
@@ -257,7 +256,30 @@ local function rail_on_step(self, dtime)
 			ctrl = player:get_player_control()
 		end
 	end
+	
+	local stop_wiggle = false
+	if self.old_pos and same_dir then
+		-- Detection for "skipping" nodes (perhaps use average dtime?)
+		-- It's sophisticated enough to take the acceleration in account
+		local acc = self.object:get_acceleration()
+		local distance = dtime * (v3_len(vel) + 0.5 * dtime * v3_len(acc))
 
+		local new_pos, new_dir = carts:pathfinder(
+			pos, self.old_pos, self.old_dir, distance, ctrl,
+			self.old_switch, self.railtype
+		)
+
+		if new_pos then
+			-- No rail found: set to the expected position
+			pos = new_pos
+			update.pos = true
+			cart_dir = new_dir
+		end
+	elseif self.old_pos and self.old_dir.y ~= 1 and not self.punched then
+		-- Stop wiggle
+		stop_wiggle = true
+	end
+	
 	local railparams
 
 	-- dir:         New moving direction of the cart
@@ -276,15 +298,16 @@ local function rail_on_step(self, dtime)
 	local dir_changed = not vector.equals(dir, self.old_dir)
 
 	local new_acc = {x=0, y=0, z=0}
-	-- no dir available
-	if vector.equals(dir, {x=0, y=0, z=0}) then
+	if stop_wiggle or vector.equals(dir, {x=0, y=0, z=0}) then
 		vel = {x = 0, y = 0, z = 0}
 		local pos_r = vector.round(pos)
 		if not carts:is_rail(pos_r, self.railtype)
 				and self.old_pos then
 			pos = self.old_pos
-		else
+		elseif not stop_wiggle then
 			pos = pos_r
+		else
+			pos.y = math.floor(pos.y + 0.5)
 		end
 		update.pos = true
 		update.vel = true
@@ -309,7 +332,7 @@ local function rail_on_step(self, dtime)
 		end
 
 		-- Slow down or speed up..
-		local acc = dir.y * -4.0
+		local acc = dir.y * -2.0
 
 		-- Get rail for corrected position
 		railparams = get_railparams(pos)
@@ -338,7 +361,7 @@ local function rail_on_step(self, dtime)
 
 	self.object:set_acceleration(new_acc)
 	self.old_pos = vector.round(pos)
-	if not vector.equals(dir, {x=0, y=0, z=0}) then
+	if not vector.equals(dir, {x=0, y=0, z=0}) and not stop_wiggle then
 		self.old_dir = vector.new(dir)
 	end
 	self.old_switch = switch_keys
@@ -385,6 +408,8 @@ local function rail_on_step(self, dtime)
 	if pitch ~= 0 then
 		pos.y = pos.y + 0.5
 		update.pos = true
+		vel = vector.divide(vel, 2)
+		update.vel = true
 	end
 	
 	if update.vel then
@@ -397,6 +422,9 @@ local function rail_on_step(self, dtime)
 			self.object:move_to(pos)
 		end
 	end
+
+	-- call event handler
+	rail_on_step_event(railparams.on_step, self, dtime)
 end
 
 function api:on_step(dtime)

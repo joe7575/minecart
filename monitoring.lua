@@ -65,6 +65,7 @@ function minecart.add_to_monitoring(obj, myID, owner, userID)
 		owner = owner,  -- needed for query API
 		userID = userID,  -- needed for query API
 		stopped = true,
+		entity_name = obj:get_entity_name()
 	}
 end
 

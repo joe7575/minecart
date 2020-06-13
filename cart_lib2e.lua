@@ -32,7 +32,7 @@ local function add_cart(pos, node_name, param2, owner, userID, cargo)
 		entity.userID = userID
 		entity.cargo = cargo
 		entity.myID = myID
-		obj:set_nametag_attributes({color = "#ffffff", text = owner..": "..userID})
+		obj:set_nametag_attributes({color = "#FFFF00", text = owner..": "..userID})
 		minecart.add_to_monitoring(obj, myID, owner, userID)
 		return myID
 	else

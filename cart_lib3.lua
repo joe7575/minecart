@@ -61,7 +61,7 @@ function api.load_cart(pos, vel, item)
 		entity.userID = item.userID or 0
 		entity.cargo = item.cargo or {}
 		entity.myID = myID
-		obj:set_nametag_attributes({color = "#ffffff", text = entity.owner..": "..entity.userID})
+		obj:set_nametag_attributes({color = "#FFFF00", text = entity.owner..": "..entity.userID})
 		-- Update item data
 		item.owner = entity.owner
 		item.cargo = nil
@@ -76,6 +76,7 @@ end
 function api.unload_cart(pos, vel, entity, item)
 	-- Copy entity data to item
 	item.cargo = entity.cargo
+	item.entity_name = entity.object:get_entity_name()
 	-- Remove entity from map
 	entity.object:remove()
 	-- Stop sound

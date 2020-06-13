@@ -31,7 +31,7 @@ local function add_cart(pos, node_name, param2, owner, userID, cargo)
 	meta:set_string("removed_rail", rail)
 	meta:set_string("owner", owner)
 	meta:set_string("userID", userID)
-	meta:set_string("infotext", owner..": "..userID)
+	meta:set_string("infotext", minetest.get_color_escape_sequence("#FFFF00")..owner..": "..userID)
 	if ndef.after_place_node then
 		ndef.after_place_node(pos)
 	end
@@ -64,7 +64,7 @@ local function start_cart(pos, node_name, entity_name, puncher, dir)
 			entity.userID = userID
 			entity.cargo = cargo
 			entity.myID = myID
-			obj:set_nametag_attributes({color = "#ffffff", text = cart_owner..": "..userID})
+			obj:set_nametag_attributes({color = "#ffff00", text = cart_owner..": "..userID})
 			minecart.add_to_monitoring(obj, myID, cart_owner, userID)
 			minecart.node_at_station(cart_owner, userID, nil)
 			-- punch cart to prevent the stopped handling
@@ -80,7 +80,6 @@ local function start_cart(pos, node_name, entity_name, puncher, dir)
 end
 
 function api.stop_cart(pos, entity, node_name, param2)
-	print("stop_cart", node_name)
 	-- rail buffer reached?
 	if api.get_route_key(pos) then
 		-- Read entity data
