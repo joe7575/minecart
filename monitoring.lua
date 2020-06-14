@@ -123,13 +123,13 @@ local function monitoring()
 	local to_be_added = {}
 	for key, item in pairs(CartsOnRail) do
 		local entity = minetest.luaentities[key]
-		--print("Cart:", key, item.owner, item.myID, item.userID)
+		--print("Cart:", key, item.owner, item.myID, item.userID, item.stopped)
 		if entity then  -- cart entity running
 			local pos = entity.object:get_pos()
 			local vel = entity.object:get_velocity()
 			if not minetest.get_node_or_nil(pos) then  -- unloaded area
 				lib.unload_cart(pos, vel, entity, item)
-				item.stopped = vector.equals(vel, {x=0, y=0, z=0})
+				item.stopped = minecart.stopped(vel)
 			end
 			-- store last pos from cart
 			item.last_pos, item.last_vel = pos, vel
@@ -139,7 +139,7 @@ local function monitoring()
 				if minetest.get_node_or_nil(pos) then  -- loaded area
 					local myID = lib.load_cart(pos, vel, item)
 					if myID then
-						item.stopped = vector.equals(vel, {x=0, y=0, z=0})
+						item.stopped = minecart.stopped(vel)
 						to_be_added[myID] = table.copy(item)
 						CartsOnRail[key] = nil  -- invalid old ID 
 					end
@@ -211,8 +211,10 @@ minetest.register_chatcommand("mycart", {
 				local pos = get_cart_pos(query_pos, cart_pos)
 				if type(pos) == "string" then
 					return true, "Cart #"..userID.." stopped at "..pos.."  "
-				else
+				elseif state == "running" then
 					return true, "Cart #"..userID.." running "..pos.." m away  "
+				else
+					return true, "Cart #"..userID.." stopped "..pos.." m away  "
 				end
 			end
 			return false, "Cart #"..userID.." is unknown"

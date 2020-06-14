@@ -51,6 +51,11 @@ function minecart.register_cart_names(cart_name_stopped, cart_name_running)
 	end
 end
 
+function minecart.stopped(vel, tolerance)
+	tolerance = tolerance or 0.05
+	return math.abs(vel.x) < tolerance and math.abs(vel.z) < tolerance
+end
+
 local function is_air_like(name)
 	local ndef = minetest.registered_nodes[name]
 	if ndef and ndef.buildable_to then
