@@ -43,6 +43,7 @@ local function calc_pos_and_vel(item)
 		end
 	end
 	if item.last_pos then
+		item.last_pos = vector.round(item.last_pos)
 		if carts:is_rail(item.last_pos, minetest.raillike_group("rail")) then
 			return item.last_pos, item.last_vel
 		end

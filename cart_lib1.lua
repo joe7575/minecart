@@ -387,7 +387,11 @@ local function rail_on_step(self, dtime)
 		update.pos = true
 		vel = vector.divide(vel, 2)
 		update.vel = true
+	elseif self.old_pitch ~= 0 then
+		vel = vector.multiply(vel, 2)
+		update.vel = true
 	end
+	self.old_pitch = pitch
 	
 	if update.vel then
 		self.object:set_velocity(vel)
