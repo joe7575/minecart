@@ -162,7 +162,7 @@ end
 -- Player removes the node
 function api.remove_cart(self, pos, player)
 	if self then  -- cart is still an entity
-		add_to_player_inventory(pos, player, "minecart:cart")
+		add_to_player_inventory(pos, player, self.node_name or "minecart:cart")
 		minecart.remove_from_monitoring(self.myID)
 		self.object:remove()
 	else
