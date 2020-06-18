@@ -145,7 +145,7 @@ function minecart.take_items(pos, param2, num)
 	local owner = M(pos):get_string("owner")
 	local inv = minetest.get_inventory({type="node", pos=npos})
 	
-	if def and inv and (not def.allow_take or def.allow_take(npos, nil, owner)) then
+	if def and inv and def.take_listname and (not def.allow_take or def.allow_take(npos, nil, owner)) then
 		return minecart.inv_take_items(inv, def.take_listname, num)
 	else
 		local ndef = minetest.registered_nodes[node.name]
@@ -161,7 +161,7 @@ function minecart.put_items(pos, param2, stack)
 	local owner = M(pos):get_string("owner")
 	local inv = minetest.get_inventory({type="node", pos=npos})
 	
-	if def and inv and (not def.allow_put or def.allow_put(npos, stack, owner)) then
+	if def and inv and def.put_listname and (not def.allow_put or def.allow_put(npos, stack, owner)) then
 		local leftover = inv:add_item(def.put_listname, stack)
 		if leftover:get_count() > 0 then
 			return leftover
