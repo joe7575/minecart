@@ -16,7 +16,7 @@ local P2S = function(pos) if pos then return minetest.pos_to_string(pos) end end
 local S2P = minetest.string_to_pos
 local S = minecart.S
 
-local DAYS_VALID = (30 * 72) -- 30 real days
+local DAYS_VALID = (180 * 72) -- 180 real days
 
 local storage = minetest.get_mod_storage()
 
@@ -45,7 +45,6 @@ for key,val in pairs(minetest.deserialize(storage:get_string("CartsOnRail")) or 
 end
 
 minetest.register_on_shutdown(function()
-	data_maintenance()
 	storage:set_string("CartsOnRail", minetest.serialize(minecart.CartsOnRail))
 end)
 
@@ -66,14 +65,19 @@ local Routes = {}
 local NEW_ROUTE = {waypoints = {}, junctions = {}}
 
 function minecart.store_route(key, route)
-	Routes[key] = table.copy(route)
-	Routes[key].best_before = minetest.get_day_count() + DAYS_VALID
-	storage:set_string(key, minetest.serialize(Routes[key]))
+	if key and route then
+		Routes[key] = table.copy(route)
+		Routes[key].best_before = minetest.get_day_count() + DAYS_VALID
+		storage:set_string(key, minetest.serialize(Routes[key]))
+	end
 end
 
 function minecart.get_route(key)
-	Routes[key] = Routes[key] or minetest.deserialize(storage:get_string(key)) or NEW_ROUTE
-	Routes[key].best_before = minetest.get_day_count() + DAYS_VALID
+	if not Routes[key] then
+		Routes[key] = minetest.deserialize(storage:get_string(key)) or NEW_ROUTE
+		Routes[key].best_before = minetest.get_day_count() + DAYS_VALID
+		storage:set_string(key, minetest.serialize(Routes[key]))
+	end
 	return Routes[key]
 end
 

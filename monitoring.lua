@@ -14,7 +14,7 @@
 -- 1) Entity IDs are volatile. For each server restart all carts get new IDs.
 -- 2) Monitoring is performed for entities only. Stopped carts in form of
 --    real nodes need no monitoring.
--- 3) But nodes at startions have to call 'node_at_station' to be "visible"
+-- 3) But nodes at stations have to call 'node_at_station' to be "visible"
 --    for the chat commands
 
 
@@ -95,6 +95,7 @@ function minecart.start_cart(pos, myID)
 	if item and item.stopped then
 		item.stopped = false
 		item.start_pos = pos
+		item.start_time = nil
 		-- cart started from a buffer?
 		local start_key = lib.get_route_key(pos)
 		if start_key then
@@ -147,6 +148,8 @@ local function monitoring()
 				end
 				item.last_pos, item.last_vel = pos, vel
 			else
+				-- should never happen
+				minetest.log("error", "[minecart] Cart of owner "..(item.owner or "nil").." got lost")
 				CartsOnRail[key] = nil
 			end
 		end
@@ -208,7 +211,7 @@ minetest.register_chatcommand("mycart", {
 			end
 			-- Check all running carts
 			local state, cart_pos = get_cart_state(name, userID)
-			if state then
+			if state and cart_pos then
 				local pos = get_cart_pos(query_pos, cart_pos)
 				if type(pos) == "string" then
 					return true, "Cart #"..userID.." stopped at "..pos.."  "
