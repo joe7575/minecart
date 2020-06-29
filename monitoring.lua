@@ -81,6 +81,7 @@ end
 function minecart.remove_from_monitoring(myID)
 	if myID then
 		CartsOnRail[myID] = nil
+		minecart.store_carts()
 	end
 end	
 
@@ -102,6 +103,7 @@ function minecart.start_cart(pos, myID)
 			item.start_time = minetest.get_gametime()
 			item.start_key = start_key
 			item.junctions = minecart.get_route(start_key).junctions
+			minecart.store_carts()
 			return true
 		end
 	end
@@ -116,6 +118,7 @@ function minecart.stop_cart(pos, myID)
 		item.start_pos = nil
 		item.junctions = nil
 		item.stopped = true
+		minecart.store_carts()
 		return true
 	end
 	return false
@@ -125,7 +128,7 @@ local function monitoring()
 	local to_be_added = {}
 	for key, item in pairs(CartsOnRail) do
 		local entity = minetest.luaentities[key]
-		--print("Cart:", key, item.owner, item.myID, item.userID, item.stopped)
+		--print("Cart:", key, item.owner, item.userID, item.stopped)
 		if entity then  -- cart entity running
 			local pos = entity.object:get_pos()
 			local vel = entity.object:get_velocity()
@@ -155,8 +158,13 @@ local function monitoring()
 		end
 	end
 	-- table maintenance
+	local is_changed = false
 	for key,val in pairs(to_be_added) do
 		CartsOnRail[key] = val
+		is_changed = true
+	end
+	if is_changed then
+		minecart.store_carts()
 	end
 	minetest.after(1, monitoring)
 end
