@@ -43,20 +43,20 @@ local function remote_station_name(pos)
 end
 
 local function on_punch(pos, node, puncher)
-	 local name = M(pos):get_string("name")
-	 M(pos):set_string("infotext", name..": "..S("connected to").." "..remote_station_name(pos))
-	 M(pos):set_string("formspec", formspec(pos))
-	 if minecart.hopper_enabled then
-			 minetest.get_node_timer(pos):start(CYCLE_TIME)
-	 end
-	 -- Optional Teleport function
-	 if not minecart.teleport_enabled then return end
-	 local route = minecart.get_route(P2S(pos))
-	 if route and route.dest_pos and puncher and puncher:is_player() then
-			 if not puncher:get_player_control()['sneak'] then
-					 puncher:set_pos(S2P(route.dest_pos))
-			 end
-	 end
+	local name = M(pos):get_string("name")
+	M(pos):set_string("infotext", name..": "..S("connected to").." "..remote_station_name(pos))
+	M(pos):set_string("formspec", formspec(pos))
+	if minecart.hopper_enabled then
+		minetest.get_node_timer(pos):start(CYCLE_TIME)
+	end
+	-- Optional Teleport function
+	if not minecart.teleport_enabled then return end
+	local route = minecart.get_route(P2S(pos))
+	if route and route.dest_pos and puncher and puncher:is_player() then
+		if not puncher:get_player_control()['sneak'] then
+			puncher:set_pos(S2P(route.dest_pos))
+		end
+	end
 end
 
 minetest.register_node("minecart:buffer", {
