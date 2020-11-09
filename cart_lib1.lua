@@ -32,27 +32,34 @@ local MP = minetest.get_modpath("minecart")
 local D = function(pos) return minetest.pos_to_string(vector.round(pos)) end 
 
 local tRails = {
-	["carts:rail"] = true,	["carts:powerrail"] = true,
+	["carts:rail"] = true,
+	["carts:powerrail"] = true,
 	["carts:brakerail"] = true,
 }
 
 local lRails = {"carts:rail", "carts:powerrail", "carts:brakerail"}
 
 local function get_rail_node(pos)
-	local node = minecart.get_node_lvm(pos)
+	local rail_pos = vector.round(pos)
+	local node = minecart.get_node_lvm(rail_pos)
 	if tRails[node.name] then
-		return node
+		return rail_pos, node
 	end
-	--print("invalid position1", P2S(pos), node.name)
 end
 
 local function find_rail_node(pos)
-	local pos1 = {x=pos.x-1, y=pos.y-1, z=pos.z-1}
-	local pos2 = {x=pos.x+1, y=pos.y+1, z=pos.z+1}
-	for _,pos in ipairs(minetest.find_nodes_in_area(pos1, pos2, lRails)) do
-		return pos, minecart.get_node_lvm(pos)
+	local rail_pos = vector.round(pos)
+	local node = get_rail_node(rail_pos)
+	if node then
+		return rail_pos, node
 	end
-	--print("invalid position2")
+	local pos1 = {x=rail_pos.x-1, y=rail_pos.y-1, z=rail_pos.z-1}
+	local pos2 = {x=rail_pos.x+1, y=rail_pos.y+1, z=rail_pos.z+1}
+	for _,pos3 in ipairs(minetest.find_nodes_in_area(pos1, pos2, lRails)) do
+		--print("invalid position1", D(pos), D(pos3))
+		return pos3, minecart.get_node_lvm(pos3)
+	end
+	--print("invalid position2", D(pos))
 end
 
 local function get_pitch(dir)
@@ -270,12 +277,16 @@ local function rail_on_step_new(self)
 	--local is_minecart = self.node_name == nil
 	
 	-- Check if invalid position (not on rail anymore)
-	local node = get_rail_node(pos)
+	local rail_pos, node = get_rail_node(pos)
 	if not node then
-		pos, node = find_rail_node(self.old_pos or pos)
-		if pos then
-			pos_rounded = vector.round(pos)
-			self.object:set_pos(pos)
+		rail_pos, node = find_rail_node(self.old_pos or pos)
+		if rail_pos then
+			pos_rounded = rail_pos
+			if rot.x ~= 0 then
+				self.object:set_pos({x=pos.x, y=pos.y + Y_OFFS_ON_SLOPES, z=pos.z})
+			else
+				self.object:set_pos(pos)
+			end
 		else
 			return -- no valid position
 		end
@@ -304,13 +315,13 @@ local function rail_on_step_new(self)
 	end
 	-- new_dir: New moving direction of the cart
 	-- keys: Currently pressed L/R key, used to ignore the key on the next rail node
-	local new_dir, keys = carts:get_rail_direction(pos, dir, nil, self.old_keys, RAILTYPE)
+	local new_dir, keys = carts:get_rail_direction(rail_pos, dir, nil, self.old_keys, RAILTYPE)
 	self.old_keys = keys
 
 	-- Detect U-turn
 	if (dir.x ~= 0 and dir.x == -new_dir.x) or (dir.z ~= 0 and dir.z == -new_dir.z) then
 		-- stop the cart
-		print("U-turn", P2S(dir), P2S(new_dir))
+		--print("U-turn", P2S(dir), P2S(new_dir), P2S(rot), P2S(vel), P2S(pos), D(pos))
 		self.object:set_velocity({x=0, y=0, z=0})
 		self.old_vel = {x=0, y=0, z=0}
 		self.object:move_to(pos_rounded)
@@ -344,7 +355,7 @@ end
 
 function api:on_step(dtime)
 	self.delay = (self.delay or 0) + dtime
-	if self.delay > 0.1 then
+	if self.delay > 0.09 then
 		rail_on_step_new(self)
 		rail_sound(self, self.delay)
 		self.delay = 0
