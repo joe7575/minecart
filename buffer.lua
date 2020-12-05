@@ -54,7 +54,7 @@ local function on_punch(pos, node, puncher)
 	local route = minecart.get_route(P2S(pos))
 	if route and route.dest_pos and puncher and puncher:is_player() then
 		if not puncher:get_player_control()['sneak'] then
-			puncher:set_pos(S2P(route.dest_pos))
+			minetest.after(0.25, puncher.set_pos, puncher, S2P(route.dest_pos))
 		end
 	end
 end
