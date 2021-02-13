@@ -54,8 +54,8 @@ local function find_rail_node(pos)
 	if node then
 		return rail_pos, node
 	end
-	local pos1 = {x=rail_pos.x-1, y=rail_pos.y-1, z=rail_pos.z-1}
-	local pos2 = {x=rail_pos.x+1, y=rail_pos.y+1, z=rail_pos.z+1}
+	local pos1 = {x=rail_pos.x-3, y=rail_pos.y-3, z=rail_pos.z-3}
+	local pos2 = {x=rail_pos.x+3, y=rail_pos.y+3, z=rail_pos.z+3}
 	for _,pos3 in ipairs(minetest.find_nodes_in_area(pos1, pos2, lRails)) do
 		--print("invalid position1", D(pos), D(pos3))
 		return pos3, minecart.get_node_lvm(pos3)
@@ -295,13 +295,17 @@ local function rail_on_step(self)
 		rail_pos, node = find_rail_node(self.old_pos)
 		if rail_pos then
 			pos_rounded = rail_pos
+			self.on_wrong_pos = nil
 			if on_slope then
 				self.object:set_pos({x=rail_pos.x, y=rail_pos.y + Y_OFFS_ON_SLOPES, z=rail_pos.z})
 			else
 				self.object:set_pos(rail_pos)
 			end
-		else
-			self.object:set_pos(pos)
+		elseif not self.on_wrong_pos then
+			self.object:set_pos({x = pos.x, y = pos.y+1, z = pos.z})
+			self.object:set_velocity({x = 0, y = 0, z = 0})
+			self.object:set_acceleration({x = 0, y = 0, z = 0})
+			self.on_wrong_pos = true
 			minetest.log("error", "[minecart] No valid position "..(P2S(pos) or "nil"))
 			return -- no valid position
 		end
