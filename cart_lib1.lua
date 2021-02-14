@@ -308,6 +308,8 @@ local function rail_on_step(self)
 			self.on_wrong_pos = true
 			minetest.log("error", "[minecart] No valid position "..(P2S(pos) or "nil"))
 			return -- no valid position
+		else
+			return
 		end
 	end
 	
