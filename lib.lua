@@ -99,7 +99,8 @@ end
 
 local function get_cart_object(pos, radius)
 	for _, object in pairs(minetest.get_objects_inside_radius(pos, radius or 0.5)) do
-		if tValidCartEntities[object:get_luaentity().name] then
+        	local entity = object:get_luaentity()
+		if entity and entity.name and tValidCartEntities[entity.name] then
 			local vel = object:get_velocity()
 			if vector.equals(vel, {x=0, y=0, z=0}) then  -- still standing?
 				return object
