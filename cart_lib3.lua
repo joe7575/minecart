@@ -77,7 +77,7 @@ end
 function api.unload_cart(pos, vel, entity, item)
 	-- Copy entity data to item
 	item.cargo = entity.cargo
-	item.entity_name = entity.object:get_entity_name()
+	item.entity_name = entity.object:get_luaentity().name
 	-- Remove entity from map
 	entity.object:remove()
 	-- Stop sound

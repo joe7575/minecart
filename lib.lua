@@ -99,7 +99,7 @@ end
 
 local function get_cart_object(pos, radius)
 	for _, object in pairs(minetest.get_objects_inside_radius(pos, radius or 0.5)) do
-		if tValidCartEntities[object:get_entity_name()] then
+		if tValidCartEntities[object:get_luaentity().name] then
 			local vel = object:get_velocity()
 			if vector.equals(vel, {x=0, y=0, z=0}) then  -- still standing?
 				return object
@@ -128,7 +128,7 @@ function minecart.check_cart_for_loading(pos, param2, radius)
 	end
 	
 	for _, object in pairs(minetest.get_objects_inside_radius(pos2, radius or 0.5)) do
-		if object:get_entity_name() == "minecart:cart" then
+		if object:get_luaentity().name == "minecart:cart" then
 			local vel = object:get_velocity()
 			if vector.equals(vel, {x=0, y=0, z=0}) then  -- still standing?
 				return true
