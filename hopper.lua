@@ -12,6 +12,9 @@
 
 local NUM_ITEMS = 4
 
+-- Test for MT 5.4 new string mode
+local CLIP = minetest.features.use_texture_alpha_string_modes and "clip" or true
+
 -- for lazy programmers
 local M = minetest.get_meta
 local P2S = function(pos) if pos then return minetest.pos_to_string(pos) end end
@@ -155,7 +158,7 @@ minetest.register_node("minecart:hopper", {
 	paramtype = "light",
 	sunlight_propagates = true,
 	paramtype2 = "facedir",
-	use_texture_alpha = "clip",
+	use_texture_alpha = CLIP,
 	groups = {choppy=2, cracky=2, crumbly=2},
 	is_ground_content = false,
 	sounds = default.node_sound_wood_defaults(),

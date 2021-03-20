@@ -129,10 +129,13 @@ function minecart.check_cart_for_loading(pos, param2, radius)
 	end
 	
 	for _, object in pairs(minetest.get_objects_inside_radius(pos2, radius or 0.5)) do
-		if object:get_luaentity().name == "minecart:cart" then
-			local vel = object:get_velocity()
-			if vector.equals(vel, {x=0, y=0, z=0}) then  -- still standing?
-				return true
+		if object.get_luaentity then
+			local entity = object:get_luaentity()
+			if entity and entity.name == "minecart:cart" then
+				local vel = object:get_velocity()
+				if vector.equals(vel, {x=0, y=0, z=0}) then  -- still standing?
+					return true
+				end
 			end
 		end
 	end
