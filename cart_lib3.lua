@@ -45,7 +45,7 @@ function api.get_station_name(pos)
 		if name ~= "" then
 			return name
 		end
-		return "-"
+		return P2S(pos1)
 	end
 end
 

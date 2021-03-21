@@ -393,7 +393,7 @@ end
 
 function api:on_step(dtime)
 	self.delay = (self.delay or 0) + dtime
-	if self.delay > 0.09 then
+	if self.delay > 0.08 then
 		rail_on_step(self)
 		rail_sound(self, self.delay)
 		self.delay = 0

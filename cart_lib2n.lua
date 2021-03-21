@@ -47,6 +47,7 @@ local function start_cart(pos, node_name, entity_name, puncher, dir)
 	if ndef then
 		local meta = M(pos)
 		local rail = meta:get_string("removed_rail")
+		if rail == "" then rail = "carts:rail" end
 		local userID = meta:get_int("userID")
 		local cart_owner = meta:get_string("owner")
 		local cargo = ndef.get_cargo and ndef.get_cargo(pos) or {}
