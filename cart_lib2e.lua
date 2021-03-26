@@ -33,7 +33,7 @@ local function add_cart(pos, node_name, param2, owner, userID, cargo)
 		entity.cargo = cargo
 		entity.myID = myID
 		obj:set_nametag_attributes({color = "#FFFF00", text = owner..": "..userID})
-		minecart.add_to_monitoring(obj, myID, owner, userID)
+		minecart.add_to_monitoring(myID, pos, entity.name, owner, userID)
 		return myID
 	else
 		print("Entity has no ID")
@@ -46,7 +46,7 @@ function api.stop_cart(pos, entity, node_name, param2)
 		minetest.sound_stop(entity.sound_handle)
 		entity.sound_handle = nil
 	end
-	minecart.stop_cart(pos, entity.myID)
+	minecart.monitoring_stop_cart(entity.myID)
 end
 
 

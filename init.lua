@@ -27,6 +27,7 @@ dofile(MP.."/recording.lua")
 dofile(MP.."/minecart.lua")
 dofile(MP.."/buffer.lua")
 dofile(MP.."/protection.lua")
+dofile(MP.."/.test_cart.lua")
 
 if minecart.hopper_enabled then
 	dofile(MP.."/hopper.lua")

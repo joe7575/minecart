@@ -23,14 +23,11 @@ local StopTime = {}
 local function formspec(pos)
 	local name = M(pos):get_string("name")
 	local time = M(pos):get_int("time")
-	local s = "size[4,4.2]" ..
+	return "size[4,4.2]" ..
 		"label[0,0;Configuration]" ..
 		"field[0.5,1.2;3.6,1;name;"..S("Station name")..":;"..name.."]"..
-		"button_exit[1,3.4;2,1;exit;Save]"
-	if minecart.hopper_enabled then
-		return s.."field[0.5,2.5;3.6,1;time;"..S("Stop time/sec")..":;"..time.."]"
-	end
-	return s
+		"button_exit[1,3.4;2,1;exit;Save]"..
+		"field[0.5,2.5;3.6,1;time;"..S("Stop time/sec")..":;"..time.."]"
 end
 
 local function remote_station_name(pos)
@@ -46,9 +43,8 @@ local function on_punch(pos, node, puncher)
 	local name = M(pos):get_string("name")
 	M(pos):set_string("infotext", name..": "..S("connected to").." "..remote_station_name(pos))
 	M(pos):set_string("formspec", formspec(pos))
-	if minecart.hopper_enabled then
-		minetest.get_node_timer(pos):start(CYCLE_TIME)
-	end
+	minetest.get_node_timer(pos):start(CYCLE_TIME)
+
 	-- Optional Teleport function
 	if not minecart.teleport_enabled then return end
 	local route = minecart.get_route(P2S(pos))
@@ -97,9 +93,7 @@ minetest.register_node("minecart:buffer", {
 		M(pos):set_string("owner", placer:get_player_name())
 		minecart.del_route(minetest.pos_to_string(pos))
 		M(pos):set_string("formspec", formspec(pos))
-		if minecart.hopper_enabled then
-			minetest.get_node_timer(pos):start(CYCLE_TIME)
-		end
+		minetest.get_node_timer(pos):start(CYCLE_TIME)
 	end,
 	on_timer = function(pos, elapsed)
 		local time = M(pos):get_int("time")
@@ -137,6 +131,7 @@ minetest.register_node("minecart:buffer", {
 			M(pos):set_int("time", tonumber(fields.time) or 0)
 			M(pos):set_string("formspec", formspec(pos))
 			M(pos):set_string("infotext", fields.name.." "..S("connected to").." "..remote_station_name(pos))
+			minetest.get_node_timer(pos):start(CYCLE_TIME)
 		end
 	end,
 	on_punch = on_punch,

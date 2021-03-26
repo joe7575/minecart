@@ -20,6 +20,41 @@ local S2P = minetest.string_to_pos
 
 local api = {}
 
+local tRails = {
+	["carts:rail"] = true,
+	["carts:powerrail"] = true,
+	["carts:brakerail"] = true,
+}
+
+local lRails = {"carts:rail", "carts:powerrail", "carts:brakerail"}
+
+local function get_rail_node(pos)
+	local node = minecart.get_node_lvm(pos)
+	if tRails[node.name] then
+		return node
+	end
+end
+
+function api.find_rail_node(rail_pos)
+	if not rail_pos then
+		return
+	end
+	local node = get_rail_node(rail_pos)
+	if node then
+		return rail_pos, node
+	end
+	local pos1 = {x=rail_pos.x-1, y=rail_pos.y-1, z=rail_pos.z-1}
+	local pos2 = {x=rail_pos.x+1, y=rail_pos.y+1, z=rail_pos.z+1}
+	for _,pos3 in ipairs(minetest.find_nodes_in_area(pos1, pos2, lRails)) do
+		return pos3, minecart.get_node_lvm(pos3)
+	end
+	pos1 = {x=rail_pos.x-3, y=rail_pos.y-3, z=rail_pos.z-3}
+	pos2 = {x=rail_pos.x+3, y=rail_pos.y+3, z=rail_pos.z+3}
+	for _,pos3 in ipairs(minetest.find_nodes_in_area(pos1, pos2, lRails)) do
+		return pos3, minecart.get_node_lvm(pos3)
+	end
+end
+
 function api.get_object_id(object)
 	for id, entity in pairs(minetest.luaentities) do
 		if entity.object == object then
@@ -46,44 +81,6 @@ function api.get_station_name(pos)
 			return name
 		end
 		return P2S(pos1)
-	end
-end
-
-function api.load_cart(pos, vel, pitch, yaw, item)
-	-- Add cart to map
-	local obj = minetest.add_entity(pos, item.entity_name or "minecart:cart", nil)
-	-- Determine ID
-	local myID = api.get_object_id(obj)
-	if myID then
-		-- Copy item data to cart entity
-		local entity = obj:get_luaentity()
-		entity.owner = item.owner or ""
-		entity.userID = item.userID or 0
-		entity.cargo = item.cargo or {}
-		entity.myID = myID
-		obj:set_nametag_attributes({color = "#FFFF00", text = entity.owner..": "..entity.userID})
-		-- Update item data
-		item.owner = entity.owner
-		item.cargo = nil
-		-- Start cart
-		obj:set_velocity(vel)
-		obj:set_rotation({x = pitch or 0, y = yaw or 0, z = 0})
-		return myID
-	else
-		print("Entity has no ID")
-	end
-end
-
-function api.unload_cart(pos, vel, entity, item)
-	-- Copy entity data to item
-	item.cargo = entity.cargo
-	item.entity_name = entity.object:get_luaentity().name
-	-- Remove entity from map
-	entity.object:remove()
-	-- Stop sound
-	if entity.sound_handle then
-		minetest.sound_stop(entity.sound_handle)
-		entity.sound_handle = nil
 	end
 end
 

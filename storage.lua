@@ -25,8 +25,12 @@ minecart.CartsOnRail = {}
 
 minetest.register_on_mods_loaded(function()
 	for key,val in pairs(minetest.deserialize(storage:get_string("CartsOnRail")) or {}) do
-		-- use invalid keys to force the cart spawning
-		minecart.CartsOnRail[-key] = val
+		if key > 0 then -- valid key
+			-- use invalid keys to force the cart spawning
+			minecart.CartsOnRail[-key] = val
+		else
+			minecart.CartsOnRail[key] = val
+		end
 	end
 end)
 
@@ -56,6 +60,29 @@ end
 local Routes = {}
 local NEW_ROUTE = {waypoints = {}, junctions = {}}
 
+-- Remove waypoints which are too near to start and dest pos
+local function shape_route(start_key, route)
+	if not route.shaped then
+		local changed = false
+		if not next(route.waypoints) then
+			return false
+		end
+		local dist1 = vector.distance(S2P(start_key),      S2P(route.waypoints[1][1]))
+		local dist2 = vector.distance(S2P(route.dest_pos), S2P(route.waypoints[#route.waypoints][1]))
+		if dist1 < 3 then
+			table.remove(route.waypoints)
+			route.shaped = true
+			changed = true
+		end
+		if dist2 < 3 then
+			table.remove(route.waypoints, 1)
+			route.shaped = true
+			changed = true
+		end
+		return changed
+	end
+end	
+
 function minecart.store_route(key, route)
 	if key and route then
 		Routes[key] = route
@@ -77,6 +104,10 @@ function minecart.get_route(key)
 			Routes[key] = NEW_ROUTE
 		end
 	end
+	-- covert data for V3 (players nearby instead of loaded areas)
+	if shape_route(key, Routes[key]) then
+		minecart.store_route(key, Routes[key])
+	end
 	return Routes[key]
 end
 
@@ -86,7 +117,7 @@ function minecart.del_route(key)
 end
 
 -------------------------------------------------------------------------------
--- Convert data to v2
+-- Convert data to v2 (routes as buffer metadata)
 -------------------------------------------------------------------------------
 minetest.after(5, function()
 	local tbl = storage:to_table()

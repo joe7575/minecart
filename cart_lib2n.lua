@@ -25,9 +25,9 @@ local api = dofile(MP.."/cart_lib3.lua")
 local function add_cart(pos, node_name, param2, owner, userID, cargo)
 	local ndef = minetest.registered_nodes[node_name]
 	local node = minetest.get_node(pos)
-	local meta = M(pos)
 	local rail = node.name
 	minetest.add_node(pos, {name = node_name, param2 = param2})
+	local meta = M(pos)
 	meta:set_string("removed_rail", rail)
 	meta:set_string("owner", owner)
 	meta:set_string("userID", userID)
@@ -47,7 +47,7 @@ local function start_cart(pos, node_name, entity_name, puncher, dir)
 	if ndef then
 		local meta = M(pos)
 		local rail = meta:get_string("removed_rail")
-		if rail == "" then rail = "carts:rail" end
+		if rail == "" then rail = "air" end
 		local userID = meta:get_int("userID")
 		local cart_owner = meta:get_string("owner")
 		local cargo = ndef.get_cargo and ndef.get_cargo(pos) or {}
@@ -66,8 +66,9 @@ local function start_cart(pos, node_name, entity_name, puncher, dir)
 			entity.cargo = cargo
 			entity.myID = myID
 			obj:set_nametag_attributes({color = "#ffff00", text = cart_owner..": "..userID})
-			minecart.add_to_monitoring(obj, myID, cart_owner, userID)
+			entity.has_no_route = not minecart.add_to_monitoring(myID, pos, entity_name, cart_owner, userID)
 			minecart.node_at_station(cart_owner, userID, nil)
+			--minecart.monitoring_start_cart(myID)
 			-- punch cart to prevent the stopped handling
 			obj:punch(puncher or obj, 1, {
 					full_punch_interval = 1.0,
@@ -81,6 +82,11 @@ local function start_cart(pos, node_name, entity_name, puncher, dir)
 end
 
 function api.stop_cart(pos, entity, node_name, param2)
+	-- Stop sound
+	if entity.sound_handle then
+		minetest.sound_stop(entity.sound_handle)
+		entity.sound_handle = nil
+	end
 	-- rail buffer reached?
 	if api.get_route_key(pos) then
 		-- Read entity data
@@ -88,16 +94,12 @@ function api.stop_cart(pos, entity, node_name, param2)
 		local userID = entity.userID or 0
 		local cargo = entity.cargo or {}
 		-- Remove entity
+		minecart.monitoring_stop_cart(entity.myID)
 		minecart.remove_from_monitoring(entity.myID)
 		minecart.node_at_station(owner, userID, pos)
 		entity.object:remove()
 		-- Add cart node
 		add_cart(pos, node_name, param2, owner, userID, cargo)
-	end
-	-- Stop sound
-	if entity.sound_handle then
-		minetest.sound_stop(entity.sound_handle)
-		entity.sound_handle = nil
 	end
 end
 
@@ -138,7 +140,6 @@ function api.add_cart(itemstack, placer, pointed_thing, node_name)
 end
 
 function api.node_on_punch(pos, node, puncher, pointed_thing, entity_name, dir)
-	local ndef = minetest.registered_nodes[node.name]
 	-- Player digs cart by sneak-punch
 	if puncher and puncher:get_player_control().sneak then
 		api.remove_cart(nil, pos, puncher)
@@ -163,7 +164,13 @@ end
 -- Player removes the node
 function api.remove_cart(self, pos, player)
 	if self then  -- cart is still an entity
+		-- Stop sound
+		if self.sound_handle then
+			minetest.sound_stop(self.sound_handle)
+			self.sound_handle = nil
+		end
 		add_to_player_inventory(pos, player, self.node_name or "minecart:cart")
+		minecart.monitoring_stop_cart(self.myID)
 		minecart.remove_from_monitoring(self.myID)
 		self.object:remove()
 	else

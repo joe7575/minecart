@@ -33,41 +33,109 @@ local NodesAtStation = {}
 --
 -- Helper functions
 --
-local function get_pos_vel_pitch_yaw(item)
+local function get_pos_vel(item)
 	if item.start_time and item.start_key then  -- cart on recorded route
 		local run_time = minetest.get_gametime() - item.start_time
 		local waypoints = get_route(item.start_key).waypoints
-		local waypoint = waypoints[run_time] or waypoints[#waypoints]
-		if waypoint then
-			return S2P(waypoint[1]), S2P(waypoint[2]), 0, 0
+		if run_time >= #waypoints then
+			local waypoint = waypoints[#waypoints]
+			return S2P(waypoint[1]), S2P(waypoint[2]), true -- time to appear
+		else
+			local waypoint = waypoints[run_time]
+			return S2P(waypoint[1]), S2P(waypoint[2]), false
 		end
 	end
-	if item.last_pos then
-		item.last_pos = vector.round(item.last_pos)
-		if carts:is_rail(item.last_pos, minetest.raillike_group("rail")) then
-			return item.last_pos, item.last_vel, item.last_pitch or 0, item.last_yaw or 0
-		end
-		item.last_pos.y = item.last_pos.y - 1
-		if carts:is_rail(item.last_pos, minetest.raillike_group("rail")) then
-			return item.last_pos, item.last_vel, item.last_pitch or 0, item.last_yaw or 0
+end
+
+local function is_player_nearby(pos)
+	for _, object in pairs(minetest.get_objects_inside_radius(pos, 30)) do
+		if object:is_player() then
+			return true
 		end
 	end
-	return item.start_pos, {x=0, y=0, z=0}, 0, 0
 end
 
 --
--- Monitoring of cart entities
+-- Monitoring API functions
 --
-function minecart.add_to_monitoring(obj, myID, owner, userID)
-	local pos = vector.round(obj:get_pos())
-	CartsOnRail[myID] = {
-		start_key = lib.get_route_key(pos),
-		start_pos = pos,
-		owner = owner,  -- needed for query API
-		userID = userID,  -- needed for query API
-		stopped = true,
-		entity_name = obj:get_luaentity().name
-	}
+function minecart.add_to_monitoring(myID, pos, entity_name, owner, userID)
+	print("add_to_monitoring")
+	if myID and pos and entity_name and owner and userID then
+		local start_key = lib.get_route_key(pos)
+		if start_key then
+			local route = get_route(start_key)
+			if route then
+				CartsOnRail[myID] = {
+					start_key = start_key,
+					last_pos = pos,
+					entity_name = entity_name,
+					owner = owner,  -- needed for query API
+					userID = userID,  -- needed for query API
+					junctions = route.junctions,
+					dest_pos = S2P(route.dest_pos),
+					stopped = true,
+				}
+				minecart.store_carts()
+				return true
+			end
+		end
+	end
+end
+
+function minecart.monitoring_start_cart(myID)
+	print("monitoring_start_cart")
+	if myID then
+		local item = CartsOnRail[myID]
+		if item and item.stopped then
+			item.stopped = false
+			item.start_time = minetest.get_gametime()
+			minecart.store_carts()
+			return true
+		end
+	end
+	return false
+end
+
+function minecart.monitoring_stop_cart(myID)
+	print("monitoring_stop_cart")
+	if myID then
+		local item = CartsOnRail[myID]
+		if item and not item.stopped then
+			item.start_time = nil
+			item.stopped = true
+			item.time_to_appear = nil
+			minecart.store_carts()
+			return true
+		end
+	end
+	return false
+end
+
+-- When cart entity is removed
+function minecart.remove_from_monitoring(myID)
+	print("remove_from_monitoring")
+	if myID then
+		CartsOnRail[myID] = nil
+		minecart.store_carts()
+	end
+end	
+
+--
+-- Additional API functions
+--
+-- For the emergency "back to start"
+function minecart.get_start_pos_vel(myID)
+	local item = CartsOnRail[myID]
+	if item then
+		local waypoints = get_route(item.start_key).waypoints
+		local waypoint = waypoints[1]
+		if waypoint then
+			local pos = S2P(waypoint[1])
+			local vel = S2P(waypoint[2])
+			vel = vector.multiply(vel, -1)
+			return pos, vel
+		end
+	end
 end
 
 -- Called after cart number formspec is closed
@@ -77,114 +145,117 @@ function minecart.update_userID(myID, userID)
 	end
 end
 
--- When cart entity is removed
-function minecart.remove_from_monitoring(myID)
-	if myID then
-		CartsOnRail[myID] = nil
-		minecart.store_carts()
-	end
-end	
 
 -- For node carts at stations
 function minecart.node_at_station(owner, userID, pos)
+	print("node_at_station", owner, userID, P2S(pos))
 	NodesAtStation[owner] = NodesAtStation[owner] or {}
 	NodesAtStation[owner][userID] = pos
 end
 		
-function minecart.start_cart(pos, myID)
-	local item = CartsOnRail[myID]
-	if item and item.stopped then
-		item.stopped = false
-		item.start_pos = pos
-		item.start_time = nil
-		-- cart started from a buffer?
-		local start_key = lib.get_route_key(pos)
-		if start_key then
-			local route = get_route(start_key)
-			if route then
-				item.start_time = minetest.get_gametime()
-				item.arrival_time = minetest.get_gametime() + #route.waypoints + 10 -- plus 10 s
-				item.start_key = start_key
-				item.junctions = route.junctions
-				minecart.store_carts()
-				return true
-			end
+--
+-- Monitoring
+--
+-- Copy item data to entity cart
+local function item_to_entity(pos, vel, item)
+	pos = lib.find_rail_node(pos)
+	if pos then
+		-- Add cart to map
+		local obj = minetest.add_entity(pos, item.entity_name or "minecart:cart", nil)
+		-- Determine ID
+		local myID = lib.get_object_id(obj)
+		if myID then
+			-- Copy item data to cart entity
+			local entity = obj:get_luaentity()
+			entity.owner = item.owner or "unknown"
+			entity.userID = item.userID or 0
+			entity.cargo = item.cargo or {}
+			entity.myID = myID
+			obj:set_nametag_attributes({color = "#FFFF00", text = entity.owner..": "..entity.userID})
+			-- Update item data
+			item.cargo = nil
+			-- Start cart
+			obj:set_velocity(vel)
+			obj:set_rotation({x = 0, y = 0, z = 0})
+			return myID
+		else
+			-- should never happen
+			minetest.log("error", "[minecart] Entity has no ID")
 		end
 	end
-	return false
 end
 
-function minecart.stop_cart(pos, myID)
-	local item = CartsOnRail[myID]
-	if item and not item.stopped then
-		item.start_time = nil
-		item.start_key = nil
-		item.junctions = nil
-		item.stopped = true
-		if lib.get_station_name(pos) then
-			item.arrival_time = nil
-		end
-		minecart.store_carts()
-		return true
+local function entity_to_item(entity, item)
+	item.cargo = entity.cargo
+	-- Remove entity from map
+	entity.object:remove()
+	-- Stop sound
+	if entity.sound_handle then
+		minetest.sound_stop(entity.sound_handle)
+		entity.sound_handle = nil
 	end
-	return false
 end
 
-local function back_to_start(object, item)
-	object:set_pos(item.start_pos)
-	object:set_velocity({x = 0, y = 0, z = 0})
-	object:set_rotation({x = 0, y = 0, z = 0})
+local function debug(item, pos, entity)
+	if item.owner == "wuffi" or item.owner == "singleplayer" then
+		print("Cart:", 
+			item.userID, 
+			P2S(vector.round(pos)), 
+			item.stopped and "stopped" or "running", 
+			entity and "entity" or "virtualized", 
+			item.entity_name)
+	end
 end
 
 local function monitoring()
 	local to_be_added = {}
-	local time = minetest.get_gametime()
+	local to_be_removed = {}
+	
 	for key, item in pairs(CartsOnRail) do
 		local entity = minetest.luaentities[key]
-		--print("Cart:", key, item.owner, item.userID, item.stopped)
 		if entity then  -- cart entity running
-			if item.arrival_time and time > item.arrival_time then  -- cart too late?
-				back_to_start(entity.object, item)
-				item.arrival_time = nil
-			else
-				local pos = entity.object:get_pos()
-				local vel = entity.object:get_velocity()
-				local rot = entity.object:get_rotation()
-				if pos and vel and rot then
-					if not minetest.get_node_or_nil(pos) then  -- unloaded area
-						lib.unload_cart(pos, vel, entity, item)
-						item.stopped = minecart.stopped(vel)
-					end
-					-- store last pos from cart
-					item.last_pos, item.last_vel, item.last_pitch, item.last_yaw = pos, vel, rot.x, rot.y
-				end
-			end
-		else  -- no cart running
-			local pos, vel, pitch, yaw = get_pos_vel_pitch_yaw(item)
+			local pos = entity.object:get_pos()
+			local vel = entity.object:get_velocity()
 			if pos and vel then
-				if minetest.get_node_or_nil(pos) then  -- loaded area
-					if pitch > 0 then 
-						pos.y = pos.y + 0.5 
-					end
-					local myID = lib.load_cart(pos, vel, pitch, yaw, item)
+				--debug(item, pos, entity)
+				item.last_pos = pos
+				item.stopped = minecart.stopped(vel)
+				if not is_player_nearby(pos) and not item.time_to_appear then
+					entity_to_item(entity, item)
+				end
+			else
+				minetest.log("error", "[minecart] Entity issues")
+			end
+			--entity.stopped = false -- force to stop monitoring
+		else  -- no cart running
+			local pos, vel, time_to_appear = get_pos_vel(item)
+			if pos and vel then
+				--debug(item, pos, entity)
+				item.last_pos = pos
+				item.stopped = minecart.stopped(vel)
+				if time_to_appear or is_player_nearby(pos) then
+					local myID = item_to_entity(pos, vel, item)
 					if myID then
-						item.stopped = minecart.stopped(vel)
+						item.time_to_appear = time_to_appear
 						to_be_added[myID] = table.copy(item)
-						CartsOnRail[key] = nil  -- invalid old ID 
+						to_be_removed[#to_be_removed + 1] = key
 					end
 				end
-				item.last_pos, item.last_vel, item.last_pitch, item.last_yaw = pos, vel, pitch, yaw
 			else
-				-- should never happen
-				minetest.log("error", "[minecart] Cart of owner "..(item.owner or "nil").." got lost")
-				CartsOnRail[key] = nil
+				minetest.log("error", "[minecart] Cart got lost")
+				to_be_removed[#to_be_removed + 1] = key
 			end
 		end
 	end
+	
 	-- table maintenance
 	local is_changed = false
 	for key,val in pairs(to_be_added) do
 		CartsOnRail[key] = val
+		is_changed = true
+	end
+	for _,key in ipairs(to_be_removed) do
+		CartsOnRail[key] = nil
 		is_changed = true
 	end
 	if is_changed then
@@ -206,7 +277,7 @@ end)
 function minecart.get_cart_list()
 	local tbl = {}
 	for id, item in pairs(CartsOnRail) do
-		local pos, speed, _, _ = get_pos_vel_pitch_yaw(item)
+		local pos, speed = get_pos_vel(item)
 		tbl[#tbl+1] = {pos = pos, speed = speed, id = id}
 	end
 	return tbl
@@ -215,7 +286,7 @@ end
 -- Function returns the cart state ("running" / "stopped") and
 -- the station name or position string, or if cart is running, 
 -- the distance to the query_pos.
-function minecart.get_cart_state_and_pos(name, userID, query_pos)
+function minecart.get_cart_state_and_loc(name, userID, query_pos)
 	-- First check if node cart is at any station
 	local cart_pos = NodesAtStation[name] and NodesAtStation[name][userID]
 	if cart_pos then
@@ -224,8 +295,9 @@ function minecart.get_cart_state_and_pos(name, userID, query_pos)
 	-- Then check all running carts
 	for id, item in pairs(CartsOnRail) do
 		if item.owner == name and item.userID == userID then
-			return item.stopped and "stopped" or "running", 
+			local loc = lib.get_station_name(item.last_pos) or
 					math.floor(vector.distance(item.last_pos, query_pos))
+			return (item.stopped and "stopped") or "running", loc
 		end
 	end
 	return "unknown", 0
@@ -239,11 +311,11 @@ minetest.register_chatcommand("mycart", {
 		local query_pos = minetest.get_player_by_name(name):get_pos()
 		
 		if userID then
-			local state, loc = minecart.get_cart_state_and_pos(name, userID, query_pos)
+			local state, loc = minecart.get_cart_state_and_loc(name, userID, query_pos)
 			if type(loc) == "number" then
-				return true, "Cart #" .. userID .. " " .. state .. loc .. " m away  "
+				return true, "Cart #" .. userID .. " " .. state .. " " .. loc .. " m away  "
 			else
-				return true, "Cart #" .. userID .. " " .. state .. " at "..loc .. "  "
+				return true, "Cart #" .. userID .. " " .. state .. " at ".. loc .. "  "
 			end
 			return false, "Cart #" .. userID .. " is unknown  "
 		else
@@ -263,12 +335,12 @@ minetest.register_chatcommand("mycart", {
 })
 
 function minecart.cmnd_cart_state(name, userID)
-	local state, loc = minecart.get_cart_state_and_pos(name, userID, {x=0, y=0, z=0})
+	local state, loc = minecart.get_cart_state_and_loc(name, userID, {x=0, y=0, z=0})
 	return state
 end
 
 function minecart.cmnd_cart_location(name, userID, query_pos)
-	local state, loc = minecart.get_cart_state_and_pos(name, userID, {x=0, y=0, z=0})
+	local state, loc = minecart.get_cart_state_and_loc(name, userID, query_pos)
 	return loc
 end
 
