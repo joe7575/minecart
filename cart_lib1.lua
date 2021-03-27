@@ -21,8 +21,11 @@ local SLOPE_ACCELERATION = 3
 local MAX_SPEED = 7
 local PUNCH_SPEED = 3
 local SLOWDOWN = 0.4
+local CYCLE_TIME = 0.15
 local RAILTYPE = minetest.get_item_group("carts:rail", "connect_to_raillike")
-local Y_OFFS_ON_SLOPES = 0.5
+local Y_OFFS_ON_SLOPES = 0.7
+local TTL_STOP = 5 -- ticks until the stopping entity mutates into a node
+
 
 -- for lazy programmers
 local M = minetest.get_meta
@@ -76,6 +79,8 @@ local function push_cart(self, pos, punch_dir, puncher)
 
 	self.old_pos = vector.round(pos)
 	self.stopped = false
+	self.left_req = false
+	self.right_req = false
 end
 
 local api = {}
@@ -161,7 +166,7 @@ function api:on_punch(puncher, time_from_last_punch, tool_capabilities, directio
 		end
 		api.load_cargo(self, pos)
 		push_cart(self, pos, cart_dir)
-		minecart.monitoring_start_cart(self.myID)
+		minecart.monitoring_start_cart(pos, self.myID)
 		return
 	end
 	
@@ -184,7 +189,7 @@ function api:on_punch(puncher, time_from_last_punch, tool_capabilities, directio
 	if puncher_is_driver then
 		minecart.start_recording(self, pos, vel, puncher)
 	else
-		minecart.monitoring_start_cart(self.myID)
+		minecart.monitoring_start_cart(pos, self.myID)
 	end
 
 	api.load_cargo(self, pos)
@@ -257,7 +262,7 @@ local function rail_on_step(self)
 		if not rail_pos then
 			-- should never happen
 			stop_cart(self, pos, false)
-			-- vlt. koennte man beim monitoring eine position anfordern?
+			-- TODO: back to start
 			minetest.log("error", "[minecart] No valid rail position")
 			return
 		end
@@ -282,6 +287,10 @@ local function rail_on_step(self)
 	-- Used as fallback position
 	self.old_pos = pos
 
+	if recording then
+		minecart.hud_dashboard(self, vel, rail_pos)
+	end
+	
 	if pos_rounded ~= rail_pos then
 		pos_rounded = rail_pos
 		self.on_wrong_pos = nil
@@ -293,6 +302,8 @@ local function rail_on_step(self)
 	end	
 	-- Calc speed (value)
 	local speed = math.sqrt((vel.x+vel.z)^2 + vel.y^2)
+	local dest_pos = minecart.get_dest_pos(self.myID)
+	
     -- Check if slope position
 	if pos_rounded.y > self.old_pos.y then
 		speed = speed - SLOPE_ACCELERATION
@@ -304,6 +315,8 @@ local function rail_on_step(self)
 	-- Add power/brake rail acceleration
 	if self.has_no_route then
 		speed = speed - 0.2
+	elseif vector.distance(dest_pos, pos_rounded) < 4 then
+		speed = 2
 	else
 		speed = speed + ((carts.railparams[node.name] or {}).acceleration or 0)
 	end
@@ -326,35 +339,41 @@ local function rail_on_step(self)
 		player = minetest.get_player_by_name(self.driver)
 		if player then
 			ctrl = player:get_player_control()
+			self.left_req = self.left_req or ctrl.left
+			self.right_req = self.right_req or ctrl.right
+			ctrl = {left = self.left_req, right = self.right_req}
 		end
 	end	
 
 	-- new_dir: New moving direction of the cart
 	-- keys: Currently pressed L/R key, used to ignore the key on the next rail node
-	local new_dir, keys = carts:get_rail_direction(rail_pos, dir, ctrl, self.old_keys, RAILTYPE)
+	local new_dir, keys = carts:get_rail_direction(rail_pos, dir, ctrl, 0, RAILTYPE)
+	print(1, P2S(dir), P2S(new_dir), recording, ctrl and ctrl.left, ctrl and ctrl.right)
+
+
 
 	-- handle junctions
-	if recording and keys then
-		minecart.set_junction(self, rail_pos, new_dir, keys)
-	else  -- normal run
+	if not recording then -- normal run
 		new_dir, keys = minecart.get_junction(self, rail_pos, new_dir)
 	end
-	self.old_keys = keys
 	
-	--print(dir.x, new_dir.x, dir.z, new_dir.z)
 	-- Detect U-turn
 	if (dir.x ~= 0 and dir.x == -new_dir.x) or (dir.z ~= 0 and dir.z == -new_dir.z) then
 		-- Stop the cart
 		print("Stop the cart", P2S(dir), P2S(new_dir))
 		self.object:set_velocity({x=0, y=0, z=0})
 		self.object:move_to(pos_rounded)
-		self.ttl = 10
+		self.ttl = TTL_STOP
+		-- TODO
 		return
 	-- New direction
-elseif not vector.equals(dir, new_dir) then
-		if self.userID == 5 then
-			print("turn the cart", minetest.get_gametime() % 1000, P2S(dir), P2S(new_dir), P2S(rail_pos))
+	elseif not vector.equals(dir, new_dir) then
+		if recording and self.left_req or self.right_req then
+			minecart.set_junction(self, rail_pos, new_dir, keys)
 		end
+		self.left_req = false
+		self.right_req = false
+
 		if new_dir.y ~= 0 then
 			self.object:set_pos({x=pos_rounded.x, y=pos_rounded.y + Y_OFFS_ON_SLOPES, z=pos_rounded.z})
 		else
@@ -380,7 +399,7 @@ end
 
 function api:on_step(dtime)
 	self.delay = (self.delay or 0) + dtime
-	if self.delay > 0.15 then
+	if self.delay > CYCLE_TIME then
 		rail_on_step(self)
 		rail_sound(self, self.delay)
 		self.delay = 0

@@ -97,6 +97,12 @@ function minecart.get_next_node(pos, param2)
 	return pos2, node
 end
 
+function minecart.hash_node_position(pos)
+	return (math.floor(pos.z / 4) + 8192) * 16384 * 16384
+		 + (math.floor(pos.y / 4) + 8192) * 16384
+		 +  math.floor(pos.x / 4) + 8192
+end
+
 local function get_cart_object(pos, radius)
 	for _, object in pairs(minetest.get_objects_inside_radius(pos, radius or 0.5)) do
         	local entity = object:get_luaentity()

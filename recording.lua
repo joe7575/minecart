@@ -30,8 +30,24 @@ function minecart.start_recording(self, pos)
 		self.waypoints = {}
 		self.junctions = {}
 		self.recording = true
+		self.num_junctions = 0
 		self.next_time = minetest.get_us_time() + 1000000
 		minetest.chat_send_player(self.driver, S("[minecart] Start route recording!"))
+		
+		local player = minetest.get_player_by_name(self.driver)
+		if player then		
+			self.hud_id = player:hud_add({
+				name = "minecart",
+				hud_elem_type = "text",
+				position = {x = 0.3, y = 0.3},
+				scale = {x=100, y=100},
+				text = "Test",
+				number = 0xFFFFFF,
+				--alignment = {x = 1, y = 1},
+				--offset = {x = 100, y = 100},
+				size = {x = 1},
+			})
+		end
 	end
 end
 
@@ -50,6 +66,11 @@ end
 -- destination reached(speed == 0)
 function minecart.stop_recording(self, pos, vel, puncher)	
 	local dest_pos = lib.get_route_key(pos, self.driver)
+	local player = minetest.get_player_by_name(self.driver)
+	if player and self.hud_id then
+		player:hud_remove(self.hud_id)
+		self.hud_id = nil
+	end
 	if dest_pos then
 		if self.start_key and self.start_key ~= dest_pos then
 			local route = {
@@ -72,14 +93,19 @@ end
 
 function minecart.set_junction(self, pos, dir, switch_keys)
 	if self.junctions then
-		self.junctions[P2S(vector.round(pos))] = {dir, switch_keys}
+		self.junctions[P2S(pos)] = {dir, switch_keys}
+		self.num_junctions = self.num_junctions + 1
 	end
 end
 
 function minecart.get_junction(self, pos, dir)
 	local junctions = CartsOnRail[self.myID] and CartsOnRail[self.myID].junctions
 	if junctions then
-		local data = junctions[P2S(vector.round(pos))]
+		local data = junctions[P2S(pos)]
+		if data then
+			return data[1], data[2]
+		end
+		data = junctions[P2S(vector.subtract(pos, dir))]
 		if data then
 			return data[1], data[2]
 		end
@@ -87,3 +113,15 @@ function minecart.get_junction(self, pos, dir)
 	return dir
 end
 
+function minecart.hud_dashboard(self, vel, pos_rounded)
+	if self.hud_id then
+		local player = minetest.get_player_by_name(self.driver)
+		if player then
+			local speed = math.floor((math.sqrt((vel.x+vel.z)^2 + vel.y^2) * 10) + 0.5) / 10
+			local num = self.num_junctions or 0
+			local dir = (self.left_req and "left") or (self.right_req and "right") or "straight"
+			local s = string.format("speed = %.1f,  pos = %10s,  then %8s,  %u junctions", speed, P2S(pos_rounded), dir, num)
+			player:hud_change(self.hud_id, "text", s)
+		end
+	end
+end

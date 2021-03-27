@@ -37,6 +37,9 @@ local function get_pos_vel(item)
 	if item.start_time and item.start_key then  -- cart on recorded route
 		local run_time = minetest.get_gametime() - item.start_time
 		local waypoints = get_route(item.start_key).waypoints
+		if not waypoints or not next(waypoints) then
+			return item.last_pos, {x = 0, y = 0, z = 0}, false
+		end
 		if run_time >= #waypoints then
 			local waypoint = waypoints[#waypoints]
 			return S2P(waypoint[1]), S2P(waypoint[2]), true -- time to appear
@@ -45,6 +48,7 @@ local function get_pos_vel(item)
 			return S2P(waypoint[1]), S2P(waypoint[2]), false
 		end
 	end
+	return item.last_pos, {x = 0, y = 0, z = 0}, false
 end
 
 local function is_player_nearby(pos)
@@ -63,34 +67,36 @@ function minecart.add_to_monitoring(myID, pos, entity_name, owner, userID)
 	if myID and pos and entity_name and owner and userID then
 		local start_key = lib.get_route_key(pos)
 		if start_key then
-			local route = get_route(start_key)
-			if route then
-				CartsOnRail[myID] = {
-					start_key = start_key,
-					last_pos = pos,
-					entity_name = entity_name,
-					owner = owner,  -- needed for query API
-					userID = userID,  -- needed for query API
-					junctions = route.junctions,
-					dest_pos = S2P(route.dest_pos),
-					stopped = true,
-				}
-				minecart.store_carts()
-				return true
-			end
+			CartsOnRail[myID] = {
+				start_key = start_key,
+				last_pos = pos,
+				entity_name = entity_name,
+				owner = owner,  -- needed for query API
+				userID = userID,  -- needed for query API
+				stopped = true,
+			}
+			minecart.store_carts()
+			return true
 		end
 	end
 end
 
-function minecart.monitoring_start_cart(myID)
+function minecart.monitoring_start_cart(pos, myID)
 	print("monitoring_start_cart")
 	if myID then
 		local item = CartsOnRail[myID]
 		if item and item.stopped then
-			item.stopped = false
-			item.start_time = minetest.get_gametime()
-			minecart.store_carts()
-			return true
+			local start_key = lib.get_route_key(pos)
+			if start_key then
+				local route = minecart.get_route(start_key)
+				item.start_key = start_key
+				item.junctions = route.junctions
+				item.dest_pos = S2P(route.dest_pos)
+				item.stopped = false
+				item.start_time = minetest.get_gametime()
+				minecart.store_carts()
+				return true
+			end
 		end
 	end
 	return false
@@ -135,6 +141,13 @@ function minecart.get_start_pos_vel(myID)
 			vel = vector.multiply(vel, -1)
 			return pos, vel
 		end
+	end
+end
+
+function minecart.get_dest_pos(myID)
+	local item = CartsOnRail[myID]
+	if item then
+		return item.dest_pos
 	end
 end
 
@@ -219,8 +232,7 @@ local function monitoring()
 			if pos and vel then
 				--debug(item, pos, entity)
 				item.last_pos = pos
-				item.stopped = minecart.stopped(vel)
-				if not is_player_nearby(pos) and not item.time_to_appear then
+				if not is_player_nearby(pos) and not item.time_to_appear and not item.stopped then
 					entity_to_item(entity, item)
 				end
 			else
@@ -232,7 +244,6 @@ local function monitoring()
 			if pos and vel then
 				--debug(item, pos, entity)
 				item.last_pos = pos
-				item.stopped = minecart.stopped(vel)
 				if time_to_appear or is_player_nearby(pos) then
 					local myID = item_to_entity(pos, vel, item)
 					if myID then

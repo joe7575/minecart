@@ -33,7 +33,7 @@ local function add_cart(pos, node_name, param2, owner, userID, cargo)
 		entity.cargo = cargo
 		entity.myID = myID
 		obj:set_nametag_attributes({color = "#FFFF00", text = owner..": "..userID})
-		minecart.add_to_monitoring(myID, pos, entity.name, owner, userID)
+		entity.has_no_route = not minecart.add_to_monitoring(myID, pos, entity.name, owner, userID)
 		return myID
 	else
 		print("Entity has no ID")

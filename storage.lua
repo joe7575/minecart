@@ -51,8 +51,8 @@ end
 --        waypoints = {{spos, svel}, {spos, svel}, ...}, 
 --        dest_pos = spos,
 --        junctions = {
---            {spos = num}, 
---            {spos = num},
+--            spos = num, 
+--            spos = num,
 --        },
 --    },
 --	  start_pos = {...},
@@ -64,7 +64,7 @@ local NEW_ROUTE = {waypoints = {}, junctions = {}}
 local function shape_route(start_key, route)
 	if not route.shaped then
 		local changed = false
-		if not next(route.waypoints) then
+		if not route.waypoints or not next(route.waypoints) then
 			return false
 		end
 		local dist1 = vector.distance(S2P(start_key),      S2P(route.waypoints[1][1]))

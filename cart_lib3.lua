@@ -28,19 +28,12 @@ local tRails = {
 
 local lRails = {"carts:rail", "carts:powerrail", "carts:brakerail"}
 
-local function get_rail_node(pos)
-	local node = minecart.get_node_lvm(pos)
-	if tRails[node.name] then
-		return node
-	end
-end
-
 function api.find_rail_node(rail_pos)
 	if not rail_pos then
 		return
 	end
-	local node = get_rail_node(rail_pos)
-	if node then
+	local node = minecart.get_node_lvm(rail_pos)
+	if tRails[node.name] then
 		return rail_pos, node
 	end
 	local pos1 = {x=rail_pos.x-1, y=rail_pos.y-1, z=rail_pos.z-1}

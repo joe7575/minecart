@@ -68,7 +68,6 @@ local function start_cart(pos, node_name, entity_name, puncher, dir)
 			obj:set_nametag_attributes({color = "#ffff00", text = cart_owner..": "..userID})
 			entity.has_no_route = not minecart.add_to_monitoring(myID, pos, entity_name, cart_owner, userID)
 			minecart.node_at_station(cart_owner, userID, nil)
-			--minecart.monitoring_start_cart(myID)
 			-- punch cart to prevent the stopped handling
 			obj:punch(puncher or obj, 1, {
 					full_punch_interval = 1.0,
