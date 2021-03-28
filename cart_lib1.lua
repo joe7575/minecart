@@ -39,9 +39,9 @@ local D = function(pos) return minetest.pos_to_string(vector.round(pos)) end
 local function get_pitch(dir)
 	local pitch = 0
 	if dir.y == -1 then
-		pitch = -math.pi/4
-	elseif dir.y == 1 then
 		pitch = math.pi/4
+	elseif dir.y == 1 then
+		pitch = -math.pi/4
 	end
 	return pitch * (dir.z == 0 and -1 or 1)
 end
@@ -107,7 +107,9 @@ function api:on_rightclick(clicker)
 	end
 	local player_name = clicker:get_player_name()
 	if self.driver and player_name == self.driver then
+		minecart.hud_remove(self)
 		self.driver = nil
+		self.recording = false
 		carts:manage_attachment(clicker, nil)
 	elseif not self.driver then
 		self.driver = player_name
@@ -146,6 +148,7 @@ function api:on_punch(puncher, time_from_last_punch, tool_capabilities, directio
 	-- driver wants to leave/remove the empty Minecart by sneak-punch
 	if is_minecart and sneak_punch and puncher_is_driver and no_cargo then
 		if puncher_is_owner then
+			minecart.hud_remove(self)
 			api.remove_cart(self, pos, puncher)
 		end
 		carts:manage_attachment(puncher, nil)
@@ -166,7 +169,8 @@ function api:on_punch(puncher, time_from_last_punch, tool_capabilities, directio
 		end
 		api.load_cargo(self, pos)
 		push_cart(self, pos, cart_dir)
-		minecart.monitoring_start_cart(pos, self.myID)
+		self.has_no_route = not minecart.monitoring_start_cart(pos, self.myID)
+		minecart.hud_remove(self)
 		return
 	end
 	
@@ -188,8 +192,10 @@ function api:on_punch(puncher, time_from_last_punch, tool_capabilities, directio
 	-- Cart with driver punched to start recording
 	if puncher_is_driver then
 		minecart.start_recording(self, pos, vel, puncher)
+		self.recording = true
 	else
-		minecart.monitoring_start_cart(pos, self.myID)
+		self.has_no_route = not minecart.monitoring_start_cart(pos, self.myID)
+		self.recording = false
 	end
 
 	api.load_cargo(self, pos)
@@ -224,19 +230,20 @@ local function rail_sound(self, dtime)
 	end
 end
 
-local function stop_cart(self, pos, recording)
+local function stop_cart(self, pos)
 	if self.ttl then
 		self.ttl = self.ttl - 1
 		if self.ttl > 0 then
 			return
 		end
+		self.ttl = nil
 	end
-	self.ttl = nil
 	if not self.stopped then
 		local param2 = minetest.dir_to_facedir(self.old_dir)
 		api.stop_cart(pos, self, self.node_name or "minecart:cart", param2)
-		if recording then
+		if self.recording then
 			minecart.stop_recording(self, pos, {x=0, y=0, z=0}, self.driver)
+			self.recording = false
 		end
 		api.unload_cargo(self, pos) 
 		self.stopped = true
@@ -247,6 +254,7 @@ end
 local function rail_on_step(self)
 	local pos = self.object:get_pos()
 	local rot = self.object:get_rotation()
+	local vel = self.object:get_velocity()
 	
 	-- cart position correction on slopes
 	local on_slope = rot.x ~= 0
@@ -261,6 +269,7 @@ local function rail_on_step(self)
 		rail_pos, node = api.find_rail_node(self.old_pos)
 		if not rail_pos then
 			-- should never happen
+			print("stop_cart 2")
 			stop_cart(self, pos, false)
 			-- TODO: back to start
 			minetest.log("error", "[minecart] No valid rail position")
@@ -269,13 +278,11 @@ local function rail_on_step(self)
 	end
 	
 	-- Check if stopped
-	local vel = self.object:get_velocity()
-	local stopped = not on_slope and minecart.stopped(vel)
-	local is_minecart = self.node_name == nil
-	local recording = is_minecart and self.driver == self.owner
-	
-	if stopped then
-		stop_cart(self, pos, recording)
+	if self.stopped then
+		return
+	elseif not on_slope and minecart.stopped(vel) then
+		print("stop_cart 1")
+		stop_cart(self, rail_pos)
 		return -- nothing todo
 	end
 	
@@ -285,10 +292,10 @@ local function rail_on_step(self)
 	end
 
 	-- Used as fallback position
-	self.old_pos = pos
+	self.old_pos = rail_pos
 
-	if recording then
-		minecart.hud_dashboard(self, vel, rail_pos)
+	if self.recording then
+		minecart.hud_dashboard(self, vel)
 	end
 	
 	if pos_rounded ~= rail_pos then
@@ -300,11 +307,11 @@ local function rail_on_step(self)
 			self.object:set_pos(rail_pos)
 		end
 	end	
-	-- Calc speed (value)
-	local speed = math.sqrt((vel.x+vel.z)^2 + vel.y^2)
-	local dest_pos = minecart.get_dest_pos(self.myID)
 	
-    -- Check if slope position
+	-- Calc new speed
+	local speed = math.sqrt((vel.x+vel.z)^2 + vel.y^2)
+	local dest_pos = minecart.get_dest_pos(self.myID) or {x=0, y=0, z=0}
+	-- Check if slope position
 	if pos_rounded.y > self.old_pos.y then
 		speed = speed - SLOPE_ACCELERATION
 	elseif pos_rounded.y < self.old_pos.y then
@@ -312,12 +319,13 @@ local function rail_on_step(self)
 	else
 		speed = speed - SLOWDOWN
 	end
-	-- Add power/brake rail acceleration
 	if self.has_no_route then
+		-- Cart without a route is not allowed
 		speed = speed - 0.2
 	elseif vector.distance(dest_pos, pos_rounded) < 4 then
-		speed = 2
+		speed = 2  -- slow down
 	else
+		-- Power/brake rail acceleration
 		speed = speed + ((carts.railparams[node.name] or {}).acceleration or 0)
 	end
 	
@@ -335,32 +343,34 @@ local function rail_on_step(self)
 	
 	-- Get player controls
 	local ctrl, player
-	if recording then
+	if self.recording then
 		player = minetest.get_player_by_name(self.driver)
 		if player then
 			ctrl = player:get_player_control()
-			self.left_req = self.left_req or ctrl.left
-			self.right_req = self.right_req or ctrl.right
+			if ctrl.left then
+				self.left_req = true
+				self.right_req = false
+			elseif ctrl.right then
+				self.right_req = true
+				self.left_req = false
+			end
 			ctrl = {left = self.left_req, right = self.right_req}
 		end
 	end	
 
 	-- new_dir: New moving direction of the cart
-	-- keys: Currently pressed L/R key, used to ignore the key on the next rail node
+	-- keys: Currently pressed L/R key
 	local new_dir, keys = carts:get_rail_direction(rail_pos, dir, ctrl, 0, RAILTYPE)
-	print(1, P2S(dir), P2S(new_dir), recording, ctrl and ctrl.left, ctrl and ctrl.right)
-
-
 
 	-- handle junctions
-	if not recording then -- normal run
+	if not self.recording then -- normal run
 		new_dir, keys = minecart.get_junction(self, rail_pos, new_dir)
 	end
 	
-	-- Detect U-turn
-	if (dir.x ~= 0 and dir.x == -new_dir.x) or (dir.z ~= 0 and dir.z == -new_dir.z) then
+	-- Detect stop
+	if new_dir.x == 0 and new_dir.z == 0 then
 		-- Stop the cart
-		print("Stop the cart", P2S(dir), P2S(new_dir))
+		print("Stop the cart")
 		self.object:set_velocity({x=0, y=0, z=0})
 		self.object:move_to(pos_rounded)
 		self.ttl = TTL_STOP
@@ -368,7 +378,7 @@ local function rail_on_step(self)
 		return
 	-- New direction
 	elseif not vector.equals(dir, new_dir) then
-		if recording and self.left_req or self.right_req then
+		if self.recording and self.left_req or self.right_req then
 			minecart.set_junction(self, rail_pos, new_dir, keys)
 		end
 		self.left_req = false
@@ -380,6 +390,7 @@ local function rail_on_step(self)
 			self.object:set_pos(pos_rounded)
 		end
 	end
+	self.old_dir = dir
 	
 	-- Set velocity and rotation
 	local new_vel = vector.multiply(new_dir, math.min(speed, MAX_SPEED))
@@ -390,11 +401,9 @@ local function rail_on_step(self)
 	self.object:set_velocity(new_vel)
 	
 
-	if recording then
-		minecart.store_next_waypoint(self, rail_pos, vel)
+	if self.recording then
+		minecart.store_next_waypoint(self, rail_pos, new_vel)
 	end
-	
-	self.old_pos = pos_rounded
 end
 
 function api:on_step(dtime)

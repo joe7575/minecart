@@ -47,6 +47,8 @@ function api.stop_cart(pos, entity, node_name, param2)
 		entity.sound_handle = nil
 	end
 	minecart.monitoring_stop_cart(entity.myID)
+	local yaw = param2 * math.pi/2
+	entity.object:set_rotation({x = 0, y = yaw, z = 0})
 end
 
 

@@ -25,6 +25,7 @@ local get_route = minecart.get_route  -- from storage.lua
 -- Route recording
 --
 function minecart.start_recording(self, pos)	
+	print("start_recording")
 	self.start_key = lib.get_route_key(pos, self.driver)
 	if self.start_key then
 		self.waypoints = {}
@@ -32,14 +33,14 @@ function minecart.start_recording(self, pos)
 		self.recording = true
 		self.num_junctions = 0
 		self.next_time = minetest.get_us_time() + 1000000
-		minetest.chat_send_player(self.driver, S("[minecart] Start route recording!"))
 		
 		local player = minetest.get_player_by_name(self.driver)
-		if player then		
+		if player then
+			minecart.hud_remove(self)
 			self.hud_id = player:hud_add({
 				name = "minecart",
 				hud_elem_type = "text",
-				position = {x = 0.3, y = 0.3},
+				position = {x = 0.4, y = 0.25},
 				scale = {x=100, y=100},
 				text = "Test",
 				number = 0xFFFFFF,
@@ -65,12 +66,9 @@ end
 
 -- destination reached(speed == 0)
 function minecart.stop_recording(self, pos, vel, puncher)	
+	print("stop_recording")
 	local dest_pos = lib.get_route_key(pos, self.driver)
 	local player = minetest.get_player_by_name(self.driver)
-	if player and self.hud_id then
-		player:hud_remove(self.hud_id)
-		self.hud_id = nil
-	end
 	if dest_pos then
 		if self.start_key and self.start_key ~= dest_pos then
 			local route = {
@@ -80,11 +78,7 @@ function minecart.stop_recording(self, pos, vel, puncher)
 			}
 			minecart.store_route(self.start_key, route)
 			minetest.chat_send_player(self.driver, S("[minecart] Route stored!"))
-		else
-			minetest.chat_send_player(self.driver, S("[minecart] Recording canceled!"))
 		end
-	else
-		minetest.chat_send_player(self.driver, S("[minecart] Recording canceled!"))
 	end
 	self.recording = false
 	self.waypoints = nil
@@ -113,15 +107,25 @@ function minecart.get_junction(self, pos, dir)
 	return dir
 end
 
-function minecart.hud_dashboard(self, vel, pos_rounded)
+function minecart.hud_dashboard(self, vel)
 	if self.hud_id then
 		local player = minetest.get_player_by_name(self.driver)
 		if player then
 			local speed = math.floor((math.sqrt((vel.x+vel.z)^2 + vel.y^2) * 10) + 0.5) / 10
 			local num = self.num_junctions or 0
 			local dir = (self.left_req and "left") or (self.right_req and "right") or "straight"
-			local s = string.format("speed = %.1f,  pos = %10s,  then %8s,  %u junctions", speed, P2S(pos_rounded), dir, num)
+			local s = string.format("Recording: speed = %.1f | dir = %-8s | %u junctions", speed, dir, num)
 			player:hud_change(self.hud_id, "text", s)
 		end
 	end
 end
+
+function minecart.hud_remove(self)
+	if self.driver then
+		local player = minetest.get_player_by_name(self.driver)
+		if player and self.hud_id then
+			player:hud_remove(self.hud_id)
+			self.hud_id = nil
+		end
+	end
+end	
