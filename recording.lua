@@ -129,3 +129,28 @@ function minecart.hud_remove(self)
 		end
 	end
 end	
+
+function minecart.recording(self)
+	local ctrl, player
+	player = minetest.get_player_by_name(self.driver)
+	if player then
+		ctrl = player:get_player_control()
+		if ctrl.left then
+			self.left_req = true
+			self.right_req = false
+		elseif ctrl.right then
+			self.right_req = true
+			self.left_req = false
+		end
+		ctrl = {left = self.left_req, right = self.right_req}
+	end
+	minecart.store_next_waypoint(self, rail_pos, new_vel)
+	-- New direction
+	elseif dir.x ~= new_dir.x or dir.z ~= new_dir.z then
+		if self.recording and self.left_req or self.right_req then
+			minecart.set_junction(self, rail_pos, new_dir, keys)
+		end
+		self.left_req = false
+		self.right_req = false
+	end
+end

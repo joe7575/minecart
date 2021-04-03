@@ -3,7 +3,7 @@
 	Minecart
 	========
 
-	Copyright (C) 2019-2020 Joachim Stolberg
+	Copyright (C) 2019-2021 Joachim Stolberg
 
 	MIT
 	See license.txt for more information
@@ -31,7 +31,7 @@ local function formspec(pos)
 end
 
 local function remote_station_name(pos)
-	local route = minecart.get_route(P2S(pos))
+	local route = minecart.get_route(pos)
 	if route and route.dest_pos then
 		local pos2 = S2P(route.dest_pos)
 		return M(pos2):get_string("name")
@@ -47,7 +47,7 @@ local function on_punch(pos, node, puncher)
 
 	-- Optional Teleport function
 	if not minecart.teleport_enabled then return end
-	local route = minecart.get_route(P2S(pos))
+	local route = minecart.get_route(pos)
 	if route and route.dest_pos and puncher and puncher:is_player() then
 
 		-- only teleport if the user is not pressing shift
@@ -91,7 +91,7 @@ minetest.register_node("minecart:buffer", {
 	},
 	after_place_node = function(pos, placer)
 		M(pos):set_string("owner", placer:get_player_name())
-		minecart.del_route(minetest.pos_to_string(pos))
+		minecart.del_route(pos)
 		M(pos):set_string("formspec", formspec(pos))
 		minetest.get_node_timer(pos):start(CYCLE_TIME)
 	end,
@@ -100,13 +100,12 @@ minetest.register_node("minecart:buffer", {
 		if time > 0 then
 			local hash = minetest.hash_node_position(pos)
 			local param2 = (minetest.get_node(pos).param2 + 2) % 4
-			if minecart.check_cart_for_pushing(pos, param2) then
+			local pos2, node = minecart.get_nodecart_nearby(pos, param2)
+			if pos2 then
 				if StopTime[hash] then
 					if StopTime[hash] < minetest.get_gametime() then
 						StopTime[hash] = nil
-						local node = minetest.get_node(pos)
-						local dir = minetest.facedir_to_dir(node.param2)
-						minecart.punch_cart(pos, param2, 0, dir)
+						minecart.start_nodecart(pos2, node.name, nil)
 					end
 				else
 					StopTime[hash] = minetest.get_gametime() + time
@@ -118,7 +117,7 @@ minetest.register_node("minecart:buffer", {
 		return true
 	end,
 	after_dig_node = function(pos)
-		minecart.del_route(minetest.pos_to_string(pos))
+		minecart.del_route(pos)
 		local hash = minetest.hash_node_position(pos)
 		StopTime[hash] = nil
 	end,
