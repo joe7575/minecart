@@ -13,7 +13,6 @@
 local P2S = function(pos) if pos then return minetest.pos_to_string(pos) end end
 local MAX_SPEED = minecart.MAX_SPEED
 local Dot2Dir = minecart.Dot2Dir
-local Dir2Dot = minecart.Dir2Dot 
 local get_waypoint = minecart.get_waypoint
 local recording = minecart.recording
 local monitoring = minecart.monitoring
@@ -21,35 +20,36 @@ local monitoring = minecart.monitoring
 local function running(self)
 	local rot = self.object:get_rotation()
 	local dir = minetest.yaw_to_dir(rot.y)
+	dir.y = math.floor((rot.x / (math.pi/4)) + 0.5)
 	local facedir = minetest.dir_to_facedir(dir)
-	local new_speed
-	local cart_pos
+	local cart_pos, cart_speed, new_speed
 	
 	if not self.waypoint then
 		-- get waypoint
-		local pos = self.object:get_pos()
-		self.waypoint = minecart.get_waypoint(pos, facedir, {})
-		if not self.waypoint then return end
-		new_speed = math.max((self.waypoint.power / 100), 0)
-		cart_pos = pos
+		cart_pos = self.object:get_pos()
+		cart_speed = 0
+		self.waypoint = get_waypoint(cart_pos, facedir, {})
 	else
-		-- position correction
-		--self.object:set_pos(self.waypoint.cart_pos)
-		cart_pos = vector.new(self.waypoint.cart_pos)
-		
 		-- next waypoint
-		self.waypoint = minecart.get_waypoint(self.waypoint.pos, facedir, self.ctrl or {})
-		if not self.waypoint then return end
-		self.ctrl = nil -- has to be determined for the next waypoint
+		--cart_pos = vector.new(self.waypoint.cart_pos)
+		cart_pos = vector.new(self.waypoint.pos)
 		local vel = self.object:get_velocity()
-		local speed = math.sqrt((vel.x+vel.z)^2 + vel.y^2)
-		if self.waypoint.power <= 0 then
-			new_speed = math.max(speed + (self.waypoint.power / 100), 0)
-		else
-			new_speed = math.min((self.waypoint.power / 100), MAX_SPEED)
-		end
+		cart_speed = math.sqrt((vel.x+vel.z)^2 + vel.y^2)
+		self.waypoint = get_waypoint(self.waypoint.pos, facedir, self.ctrl or {})
+		self.ctrl = nil -- has to be determined for the next waypoint
 	end
 
+	if not self.waypoint then
+		return
+	end
+	
+	-- Calc speed
+	local rail_power = self.waypoint.power / 100
+	if rail_power <= 0 then
+		new_speed = math.max(cart_speed + rail_power, 0)
+	else
+		new_speed = math.min(rail_power, MAX_SPEED)
+	end
 	-- Speed corrections
 	local new_dir = Dot2Dir[self.waypoint.dot]
 	if new_dir.y == 1 then
@@ -60,25 +60,30 @@ local function running(self)
 		if new_speed < 0.4 then new_speed = 0 end
 	end
 	
+	-- Slope corrections 1
+	if new_dir.y ~= 0 then
+		cart_pos = vector.add(cart_pos, {x = new_dir.x / 2, y = 0.2, z = new_dir.z / 2})
+	elseif dir.y == 1 then
+		cart_pos = vector.subtract(cart_pos, {x = dir.x / 2, y = 0, z = dir.z / 2})
+	elseif dir.y == -1 then
+		cart_pos = vector.add(cart_pos, {x = dir.x / 2, y = 0, z = dir.z / 2})
+	end	
+	
 	-- Calc velocity, rotation, pos and arrival_time
 	local yaw = minetest.dir_to_yaw(new_dir)
 	local pitch = new_dir.y * math.pi/4
-	local dist = math.max(vector.distance(cart_pos, self.waypoint.cart_pos), 1)
+	local dist = math.max(vector.distance(cart_pos, self.waypoint.pos), 1)
 	self.arrival_time = self.timebase + (dist / new_speed)
 	
-	-- Slope corrections
+	-- Slope corrections 2
 	if new_dir.y ~= 0 then
-		cart_pos.y = cart_pos.y + 0.2
 		new_speed = new_speed / 1.41
-	end
-	
+	end	
 	local vel = vector.multiply(new_dir, new_speed)
 	
 	self.object:set_pos(cart_pos)
 	self.object:set_rotation({x = pitch, y = yaw, z = 0})
 	self.object:set_velocity(vel)
-	--local s = string.format("power = %.1f, dist = %.1f, pos = %s, cart_pos = %s", self.waypoint.power, dist, P2S(self.waypoint.pos), P2S(self.waypoint.cart_pos))
-	--print("running", s)
 end
 
 local function play_sound(self)
@@ -103,7 +108,6 @@ local function on_step(self, dtime)
 	
 	if self.is_running then
 		self.timebase = (self.timebase or 0) + dtime
-		print("on_step", self.timebase)
 		if self.timebase >= (self.arrival_time or 0) then
 			running(self)
 		end

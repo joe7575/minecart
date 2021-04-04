@@ -54,7 +54,7 @@ function minecart.store_route(pos, route)
 end
 
 function minecart.get_route(pos)
-	if spos then
+	if pos then
 		local s = M(pos):get_string("route")
 		if s ~= "" then
 			local route = minetest.deserialize(s)

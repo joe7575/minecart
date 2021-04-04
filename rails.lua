@@ -36,6 +36,7 @@ local tRails = {
 	["carts:powerrail"] = true,
 	["carts:brakerail"] = true,
 }
+local lRails = {"carts:rail", "carts:powerrail", "carts:brakerail"}
 
 local Dot2Dir = {}
 local Dir2Dot = {}
@@ -52,7 +53,9 @@ local flip = {
 	[0] = 2,
 	[1] = 3,
 	[2] = 0,
-	[3] = 1
+	[3] = 1,
+	[4] = 5,
+	[5] = 4,
 }
 
 -- Create helper tables
@@ -66,19 +69,20 @@ for dot = 1,12 do
 end
 
 
-local function check_front_up_down(pos, facedir)
+local function check_front_up_down(pos, facedir, test_for_slope)
 	local npos
 	
     npos = vector.add(pos, Facedir2Dir[facedir]) 
     if tRails[get_node_lvm(npos).name] then
 		-- We also have to check the next node to find the next upgoing rail.
-		npos = vector.add(npos, Facedir2Dir[facedir])
-		npos.y = npos.y + 1
-		if tRails[get_node_lvm(npos).name] then
-			--print("check_front_up_down: 2up")
-			return facedir * 3 + 3 -- up
+		if test_for_slope then
+			npos = vector.add(npos, Facedir2Dir[facedir])
+			npos.y = npos.y + 1
+			if tRails[get_node_lvm(npos).name] then
+				--print("check_front_up_down: 2up")
+				return facedir * 3 + 3 -- up
+			end
 		end
-  
 		--print("check_front_up_down: front")
 		return facedir * 3 + 2 -- front
     end
@@ -97,19 +101,41 @@ local function check_front_up_down(pos, facedir)
 end
 
 -- Search for rails in 3 directions (based on given facedir)
-local function find_rails_nearby(pos, facedir)
+local function find_rails_nearby(pos, facedir, test_for_slope)
 	-- Do not check the direction we are coming from
 	facedir = flip[facedir]
     
     local tbl = {}
     for fd = 0, 3 do
         if fd ~= facedir then 
-            tbl[#tbl + 1] = check_front_up_down(pos, fd)
+            tbl[#tbl + 1] = check_front_up_down(pos, fd, test_for_slope)
         end
     end
 	return tbl
 end
 
+local function delete_rail_metadata(pos, nearby)
+	local delete = function(pos)
+		local meta = M(pos)
+		if meta:contains("waypoints") then
+			local hash = P2H(pos)
+			tWaypoints[hash] = nil
+			meta:set_string("waypoints", "")
+			minecart.set_marker(pos, "delete")
+		end
+	end
+	
+	if nearby then
+		local pos1 = {x = pos.x - 1, y = pos.y, z = pos.z - 1}
+		local pos2 = {x = pos.x + 1, y = pos.y, z = pos.z + 1}
+		for _, npos in ipairs(minetest.find_nodes_in_area_under_air(pos1, pos2, lRails)) do
+			delete(npos)
+		end
+	else
+		delete(pos)
+	end
+end
+		
 local function get_rail_power(pos, dot)
 	local y = ((dot - 1) % 3) - 1
 	local node
@@ -122,7 +148,7 @@ local function get_rail_power(pos, dot)
 end
 
 local function find_next_waypoint(pos, dot)
-	--print("find_next_waypoint", P2S(pos), dot)
+	print("find_next_waypoint", P2S(pos), dot)
 	local npos = vector.new(pos)
 	local facedir = math.floor((dot - 1) / 3)
 	local y = ((dot - 1) % 3) - 1
@@ -131,44 +157,54 @@ local function find_next_waypoint(pos, dot)
 	while cnt < 1000 do
 		npos = vector.add(npos, Dot2Dir[dot])
 		power = power + get_rail_power(npos, dot)
-		local dots = find_rails_nearby(npos, facedir)
+		local dots = find_rails_nearby(npos, facedir, true)
 		
 		if #dots == 0 then -- end of rail
-			return npos, power, npos
+			return npos, power
 		elseif #dots > 1 then -- junction
-			return npos, power, npos
+			return npos, power
 		elseif dots[1] ~= dot then -- curve
-			-- If the direction changes to upwards ,
-			-- the cart position must be half a block further and
+			-- If the direction changes to upwards,
 			-- the destination pos must be one block further to hit the next rail.
 			if y == 1 then
 				local dir = Dot2Dir[dot]
-				local cart_pos = vector.add(npos, {x = dir.x / 2, y = 0, z = dir.z / 2})
 				npos = vector.add(npos, Facedir2Dir[facedir])
-				return npos, power, cart_pos
+				return npos, power
 			end
-			-- If the direction changes between straight, up and down,
-			-- the cart position must be half a block further.
-			local chng = dot - dots[1]
-			if chng >= -2 and chng <= 1 then
-				local dir = Dot2Dir[dot]
-				local cart_pos = vector.add(npos, {x = dir.x / 2, y = 0, z = dir.z / 2})
-				return npos, power, cart_pos
-			end
-			
-			return npos, power, npos
+			return npos, power
 		end
 		cnt = cnt + 1
 	end
-	return pos, 0, pos
+	return pos, 0
 end
+
+local function find_next_meta(pos, facedir)
+	print("find_next_meta", P2S(pos), facedir)
+	local npos = vector.new(pos)
+	local cnt = 0
+	local old_dot
+	while cnt < 1000 do
+		local dot = check_front_up_down(pos, facedir)
+		old_dot = old_dot or dot
+		if dot and dot == old_dot then
+			npos = vector.add(npos, Dot2Dir[dot])
+			print("find_next_meta", P2S(npos), facedir, M(npos):contains("waypoints"))
+			if M(npos):contains("waypoints") then
+				return npos
+			end
+		else
+			return
+		end
+		cnt = cnt + 1
+	end
+end	
 
 -- Search for rails in all 4 directions
 local function find_all_rails_nearby(pos)
 	--print("find_all_rails_nearby")
     local tbl = {}
     for fd = 0, 3 do
-		tbl[#tbl + 1] = check_front_up_down(pos, fd)
+		tbl[#tbl + 1] = check_front_up_down(pos, fd, true)
     end
 	return tbl
 end
@@ -214,6 +250,22 @@ local function is_waypoint(dots)
 	return false
 end	
 
+--local function is_slope(pos)
+--	-- Use invalid facedir to be able to test all 4 directions
+--	local dots = find_rails_nearby(pos, 4)
+--	if #dots > 2 then 
+--		return
+--	elseif #dots == 2 then
+--		local y1 = ((dots[1] - 1) % 3) - 1
+--		local y2 = ((dots[2] - 1) % 3) - 1
+--		if y1 ~= y2 then return dots end
+--	else -- 1
+--		local y = ((dots[1] - 1) % 3) - 1
+--		if y ~= 0 then return dots end
+--	end
+--	return
+--end	
+
 local function determine_waypoints(pos)
 	--print("determine_waypoints")
 	local t = minetest.get_us_time()
@@ -233,6 +285,18 @@ local function determine_waypoints(pos)
 	print("time = ", t)
     return waypoints
 end
+
+local function delete_waypoints(pos)
+	-- Use invalid facedir to be able to test all 4 directions
+	for _, dot in ipairs(find_rails_nearby(pos, 4)) do
+		local facedir = math.floor((dot - 1) / 3)
+		local npos = find_next_meta(pos, facedir)
+		if npos then
+			delete_rail_metadata(npos, true)
+		end		
+	end
+	delete_rail_metadata(pos, true)
+end	
 
 local function get_metadata(pos)
     local s = M(pos):get_string("waypoints")
@@ -261,24 +325,25 @@ end
 
 local function after_dig_node(pos, oldnode, oldmetadata, digger)
 	print("after_dig_node")
-	for _, waypoint in pairs(determine_waypoints(pos)) do
-		if waypoint.pos then
-			print("after_dig_node", P2S(waypoint.pos))
-			local hash = P2H(waypoint.pos)
-			tWaypoints[hash] = nil
-			M(waypoint.pos):set_string("waypoints", "")
-		end
-	end
+	delete_waypoints(pos)
+end
+
+local function after_place_node(pos, oldnode, oldmetadata, digger)
+	print("after_place_node")
+	delete_waypoints(pos)
 end
 
 for name,_ in pairs(tRails) do
-	minetest.override_item(name, {after_dig_node = after_dig_node})
+	minetest.override_item(name, {
+			after_dig_node = after_dig_node, 
+			after_place_node = after_place_node
+	})
 end	
 
 minecart.MAX_SPEED = MAX_SPEED
 minecart.Dot2Dir = Dot2Dir
 minecart.Dir2Dot = Dir2Dot 
-minecart.find_next_waypoint = find_next_waypoint
+--minecart.find_next_waypoint = find_next_waypoint
 minecart.get_waypoint = get_waypoint
 
 function minecart.is_rail(pos)
@@ -288,7 +353,7 @@ end
 minetest.register_lbm({
 	label = "Delete waypoints",
 	name = "minecart:rails",
-	nodenames = {"carts:rail", "carts:powerrail", "carts:brakerail"},
+	nodenames = lRails,
 	run_at_every_load = true,
 	action = function(pos, node)
 		M(pos):set_string("waypoints", "")

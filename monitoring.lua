@@ -464,7 +464,67 @@ function minecart.monitoring(self)
 --	end
 end
 
-function minecart.update_cart_status(owner, userID, stopped, objID, pos, node_name, entity_name, cargo)
-	print("update_cart_status", owner, userID, stopped)
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+local tRunningCarts = {}
+local Queue = {}
+local first = 0
+local last = -1
+
+local function push(cycle, item)
+	last = last + 1
+	item.cycle = cycle
+	Queue[last] = item
+end
+
+local function pop(cycle)
+	if first > last then return end
+	local item = Queue[first]
+	if item.cycle < cycle then
+		Queue[first] = nil -- to allow garbage collection
+		first = first + 1
+		return item
+	end
+end
+
+local function monitoring(cycle)
+    local cart = pop(cycle)
+
+    while cart and cart.objID do
+		local entity = minetest.luaentities[cart.objID]
+		if entity then  -- cart entity running
+			local pos = vector.round(entity.object:get_pos())
+			print("monitoring", cycle, P2S(pos))
+		end
+		push(cycle, cart)
+        cart = pop(cycle)
+	end
+	minetest.after(2, monitoring, cycle + 1)
+end
+
+--minetest.after(2, monitoring, 1)
+
+
+function minecart.start_monitoring(owner, userID, objID, pos, node_name, entity_name, cargo)
+	print("start_monitoring", owner, userID)
+	tRunningCarts[owner] = tRunningCarts[owner] or {}
+	tRunningCarts[owner][userID] = {
+		owner = owner,
+		userID = userID,
+		objID = objID,
+		start_pos = pos,
+		node_name = node_name,
+		entity_name = entity_name,
+		cargo = cargo,
+		section = {},
+	}
+	push(0, tRunningCarts[owner][userID])
 end
 	
+function minecart.stop_monitoring(owner, userID)
+	print("stop_monitoring", owner, userID)
+	if tRunningCarts[owner] and tRunningCarts[owner][userID] then
+		tRunningCarts[owner][userID].objID = nil
+	end
+end

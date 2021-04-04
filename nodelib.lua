@@ -39,33 +39,16 @@ end
 
 -- Player places the node
 function minecart.on_nodecart_place(itemstack, placer, pointed_thing)
-	
-	local add_cart = function(pos, node_name, param2, owner)
-		local ndef = minetest.registered_nodes[node_name]
-		local node = minetest.get_node(pos)
-		local rail = node.name
-		minetest.swap_node(pos, {name = node_name, param2 = param2})
-		local meta = M(pos)
-		meta:set_string("removed_rail", rail)
-		meta:set_string("owner", owner)
-		meta:set_string("infotext", 
-				minetest.get_color_escape_sequence("#FFFF00") .. owner .. ": 0")
-		--meta:set_string("cart_pos", P2S(pos))
-		if ndef.after_place_node then
-			ndef.after_place_node(pos)
-		end
-	end
-	
 	local node_name = itemstack:get_name()
 	local param2 = minetest.dir_to_facedir(placer:get_look_dir())
 	local owner = placer:get_player_name()
 	
 	-- Add node
 	if minecart.is_rail(pointed_thing.under) then
-		add_cart(pointed_thing.under, node_name, param2, owner)
+		minecart.add_nodecart(pointed_thing.under, node_name, param2, {}, owner, 0)
 		placer:get_meta():set_string("cart_pos", P2S(pointed_thing.under))
 	elseif minecart.is_rail(pointed_thing.above) then
-		add_cart(pointed_thing.above, node_name, param2, owner)
+		minecart.add_nodecart(pointed_thing.above, node_name, param2, {}, owner, 0)
 		placer:get_meta():set_string("cart_pos", P2S(pointed_thing.above))
 	else
 		return itemstack
@@ -93,20 +76,10 @@ function minecart.on_nodecart_punch(pos, node, puncher, pointed_thing)
 end
 
 function minecart.on_nodecart_dig(pos, node, digger)
-	local meta = M(pos)
-	local userID = meta:get_int("userID")
-	local owner = meta:get_string("owner")
 	local ndef = minetest.registered_nodes[node.name]
-	
 	if not ndef.can_dig or ndef.can_dig(pos, digger) then
-		minecart.add_node_to_player_inventory(pos, digger, node.name)
-		node.name = M(pos):get_string("removed_rail")
-		print("on_nodecart_dig", userID, owner, node.name)
-		if node.name == "" then
-			node.name = "carts:rail"
-		end
-		minetest.swap_node(pos, node)
-		minecart.update_cart_status(owner, userID)
+		local _, owner, userID = minecart.remove_nodecart(pos)
+		minecart.stop_monitoring(owner, userID)
 	end
 end
 
@@ -122,7 +95,6 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 				M(cart_pos):set_string("infotext", 
 						minetest.get_color_escape_sequence("#FFFF00") ..
 						player:get_player_name() .. ": " .. userID)
-				minecart.update_cart_status(owner, userID, true)
 			end
 		end
 		return true

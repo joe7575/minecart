@@ -80,7 +80,7 @@ minecart.register_cart_entity("minecart:cart", "minecart:cart_node", {
 		visual = "wielditem",
 		textures = {"minecart:cart_node"},
 		visual_size = {x=0.66, y=0.66, z=0.66},
-		static_save = true,
+		static_save = false,
 	},
 })
 
