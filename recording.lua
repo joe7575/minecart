@@ -3,7 +3,7 @@
 	Minecart
 	========
 
-	Copyright (C) 2019-2020 Joachim Stolberg
+	Copyright (C) 2019-2021 Joachim Stolberg
 
 	MIT
 	See license.txt for more information
@@ -14,29 +14,15 @@
 local M = minetest.get_meta
 local P2S = function(pos) if pos then return minetest.pos_to_string(pos) end end
 local S2P = minetest.string_to_pos
+local P2H = minetest.hash_node_position
+local H2P = minetest.get_position_from_hash
 local S = minecart.S
-local MP = minetest.get_modpath("minecart")
-local lib = dofile(MP.."/cart_lib3.lua")
 
-local CartsOnRail = minecart.CartsOnRail  -- from storage.lua
-local get_route = minecart.get_route  -- from storage.lua
-
---
--- Route recording
---
-function minecart.start_recording(self, pos)	
-	print("start_recording")
-	self.start_key = lib.get_route_key(pos, self.driver)
-	if self.start_key then
-		self.waypoints = {}
-		self.junctions = {}
-		self.recording = true
-		self.num_junctions = 0
-		self.next_time = minetest.get_us_time() + 1000000
-		
+local function dashboard_create(self)
+	if self.driver then	
 		local player = minetest.get_player_by_name(self.driver)
 		if player then
-			minecart.hud_remove(self)
+			minecart.dashboard_destroy(self)
 			self.hud_id = player:hud_add({
 				name = "minecart",
 				hud_elem_type = "text",
@@ -44,71 +30,14 @@ function minecart.start_recording(self, pos)
 				scale = {x=100, y=100},
 				text = "Test",
 				number = 0xFFFFFF,
-				--alignment = {x = 1, y = 1},
-				--offset = {x = 100, y = 100},
 				size = {x = 1},
 			})
 		end
 	end
 end
 
-function minecart.store_next_waypoint(self, pos, vel)	
-	if self.start_key and self.recording and self.driver and 
-			self.next_time < minetest.get_us_time() then
-		self.next_time = minetest.get_us_time() + 1000000
-		self.waypoints[#self.waypoints+1] = {P2S(vector.round(pos)), P2S(vector.round(vel))}
-	elseif self.recording and not self.driver then
-		self.recording = false
-		self.waypoints = nil
-		self.junctions = nil
-	end
-end
-
--- destination reached(speed == 0)
-function minecart.stop_recording(self, pos, vel, puncher)	
-	print("stop_recording")
-	local dest_pos = lib.get_route_key(pos, self.driver)
-	local player = minetest.get_player_by_name(self.driver)
-	if dest_pos then
-		if self.start_key and self.start_key ~= dest_pos then
-			local route = {
-				waypoints = self.waypoints,
-				dest_pos = dest_pos,
-				junctions = self.junctions,
-			}
-			minecart.store_route(self.start_key, route)
-			minetest.chat_send_player(self.driver, S("[minecart] Route stored!"))
-		end
-	end
-	self.recording = false
-	self.waypoints = nil
-	self.junctions = nil
-end
-
-function minecart.set_junction(self, pos, dir, switch_keys)
-	if self.junctions then
-		self.junctions[P2S(pos)] = {dir, switch_keys}
-		self.num_junctions = self.num_junctions + 1
-	end
-end
-
-function minecart.get_junction(self, pos, dir)
-	local junctions = CartsOnRail[self.myID] and CartsOnRail[self.myID].junctions
-	if junctions then
-		local data = junctions[P2S(pos)]
-		if data then
-			return data[1], data[2]
-		end
-		data = junctions[P2S(vector.subtract(pos, dir))]
-		if data then
-			return data[1], data[2]
-		end
-	end
-	return dir
-end
-
-function minecart.hud_dashboard(self, vel)
-	if self.hud_id then
+function minecart.dashboard_update(self, vel)
+	if self.driver and self.hud_id then
 		local player = minetest.get_player_by_name(self.driver)
 		if player then
 			local speed = math.floor((math.sqrt((vel.x+vel.z)^2 + vel.y^2) * 10) + 0.5) / 10
@@ -120,37 +49,77 @@ function minecart.hud_dashboard(self, vel)
 	end
 end
 
-function minecart.hud_remove(self)
-	if self.driver then
+function minecart.dashboard_destroy(self)
+	if self.driver and self.hud_id then
 		local player = minetest.get_player_by_name(self.driver)
-		if player and self.hud_id then
+		if player then
 			player:hud_remove(self.hud_id)
 			self.hud_id = nil
 		end
 	end
-end	
+end
 
-function minecart.recording(self)
-	local ctrl, player
-	player = minetest.get_player_by_name(self.driver)
-	if player then
-		ctrl = player:get_player_control()
-		if ctrl.left then
-			self.left_req = true
-			self.right_req = false
-		elseif ctrl.right then
-			self.right_req = true
-			self.left_req = false
+--
+-- Route recording
+--
+function minecart.start_recording(self, pos)	
+	print("start_recording")
+	if self.driver then
+		self.start_pos = minecart.get_buffer_pos(pos, self.driver)
+		if self.start_pos then
+			self.checkpoints = {}
+			self.junctions = {}
+			self.is_recording = true
+			self.rec_time = self.rec_time + 2.0
+			
+			dashboard_create(self)
 		end
-		ctrl = {left = self.left_req, right = self.right_req}
 	end
-	minecart.store_next_waypoint(self, rail_pos, new_vel)
-	-- New direction
-	elseif dir.x ~= new_dir.x or dir.z ~= new_dir.z then
-		if self.recording and self.left_req or self.right_req then
-			minecart.set_junction(self, rail_pos, new_dir, keys)
+end
+
+function minecart.stop_recording(self, pos)	
+	print("stop_recording")
+	if self.driver then
+		local dest_pos = minecart.get_buffer_pos(pos, self.driver)
+		local player = minetest.get_player_by_name(self.driver)
+		if dest_pos and player then
+			if self.start_pos and vector.equals(self.start_pos, dest_pos) then
+				local route = {
+					dest_pos = dest_pos,
+					waypoints = self.waypoints,
+					junctions = self.junctions,
+				}
+				minecart.store_route(self.start_pos, route)
+				minetest.chat_send_player(self.driver, S("[minecart] Route stored!"))
+			end
+			minecart.dashboard_destroy(self)
 		end
-		self.left_req = false
-		self.right_req = false
+	end
+	self.is_recording = false
+	self.waypoints = nil
+	self.junctions = nil
+end
+
+function minecart.recording_waypoints(self)	
+	self.waypoints[#self.waypoints+1] = {
+		-- cart_pos, new_pos, speed, dot
+		P2H(self.object:get_pos()), 
+		P2H(self.section.pos), 
+		math.floor(self.speed + 0.5),
+		self.dot
+	}
+end
+
+function minecart.recording_junctions(self)
+	if self.driver then
+		local player = minetest.get_player_by_name(self.driver)
+		if player then
+			local ctrl = player:get_player_control()
+			if ctrl.left then
+				self.junctions[P2H(self.waypoint.pos)] = {left = true})
+			elseif ctrl.right then
+				self.junctions[P2H(self.waypoint.pos)] = {right = true})
+			end
+		end
 	end
 end

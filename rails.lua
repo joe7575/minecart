@@ -272,10 +272,10 @@ local function determine_waypoints(pos)
     local waypoints = {}
 	local dots = {}
 	for _,dot in ipairs(find_all_rails_nearby(pos, 0)) do
-		local npos, power, cart_pos = find_next_waypoint(pos, dot)
+		local npos, power = find_next_waypoint(pos, dot)
 		local facedir = math.floor((dot - 1) / 3)
 		power = math.floor(recalc_power(dot, power, pos, npos) * 100)
-		waypoints[facedir] = {dot = dot, pos = npos, power = power, cart_pos = cart_pos}
+		waypoints[facedir] = {dot = dot, pos = npos, power = power}
 		dots[#dots + 1] = dot
 	end
 	if is_waypoint(dots) then

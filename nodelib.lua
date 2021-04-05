@@ -28,11 +28,12 @@ end
 function minecart.start_nodecart(pos, node_name, puncher)
 	local owner = M(pos):get_string("owner")
 	if minecart.is_owner(puncher, owner) then
-		local entity_name = minecart.tEntityNames[node_name]
+		local entity_name = minecart.tNodeNames[node_name]
 		local objID, obj = minecart.node_to_entity(pos, node_name, entity_name)
 		if objID then
 			local entity = obj:get_luaentity()
 			entity.is_running = true
+			entity.arrival_time = 0
 		end
 	end
 end

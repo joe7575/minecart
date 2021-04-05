@@ -25,8 +25,9 @@ local param2_to_dir = {[0]=
 }
 
 -- Registered carts
-minecart.tEntityNames = {} -- [<cart_node_name>] =  <cart_entity_name>
-minecart.lCartNodeNames = {}
+minecart.tNodeNames = {} -- [<cart_node_name>] =  <cart_entity_name>
+minecart.tEntityNames = {} -- [<cart_entity_name>] =  true
+minecart.lCartNodeNames = {} -- {<cart_node_name>, <cart_node_name>, ...}
 
 function minecart.param2_to_dir(param2)
 	return param2_to_dir[param2 % 6]
@@ -123,17 +124,17 @@ function minecart.is_owner(player, owner)
 	return name == owner
 end
 
-function minecart.get_route_key(pos, player_name)
+function minecart.get_buffer_pos(pos, player_name)
 	local pos1 = minetest.find_node_near(pos, 1, {"minecart:buffer"})
 	if pos1 then
 		local meta = minetest.get_meta(pos1)
 		if player_name == nil or player_name == meta:get_string("owner") then
-			return P2S(pos1)
+			return pos1
 		end
 	end
 end
 
-function minecart.get_station_name(pos)
+function minecart.get_buffer_name(pos)
 	local pos1 = minetest.find_node_near(pos, 1, {"minecart:buffer"})
 	if pos1 then
 		local name = M(pos1):get_string("name")
@@ -145,7 +146,8 @@ function minecart.get_station_name(pos)
 end
 
 function minecart.register_cart_names(node_name, entity_name)
-	minecart.tEntityNames[node_name] = entity_name
+	minecart.tNodeNames[node_name] = entity_name
+	minecart.tEntityNames[entity_name] = true
 	minecart.lCartNodeNames[#minecart.lCartNodeNames+1] = node_name
 end
 
@@ -245,4 +247,3 @@ function minecart.remove_entity(self, pos, player)
 	minecart.stop_monitoring(self.owner, self.userID)
 	self.object:remove()
 end
-

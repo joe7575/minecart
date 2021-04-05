@@ -528,3 +528,20 @@ function minecart.stop_monitoring(owner, userID)
 		tRunningCarts[owner][userID].objID = nil
 	end
 end
+
+
+function minecart.get_junction(self, pos, dir)
+	local junctions = CartsOnRail[self.myID] and CartsOnRail[self.myID].junctions
+	if junctions then
+		local data = junctions[P2S(pos)]
+		if data then
+			return data[1], data[2]
+		end
+		data = junctions[P2S(vector.subtract(pos, dir))]
+		if data then
+			return data[1], data[2]
+		end
+	end
+	return dir
+end
+
