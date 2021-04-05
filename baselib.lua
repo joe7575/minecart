@@ -145,6 +145,32 @@ function minecart.get_buffer_name(pos)
 	end
 end
 
+function minecart.manage_attachment(player, obj, get_on)
+	if not player then
+		return
+	end
+	local player_name = player:get_player_name()
+	if player_api.player_attached[player_name] == get_on then
+		return
+	end
+	player_api.player_attached[player_name] = get_on
+	
+	local self = obj:get_luaentity()
+	if get_on then
+		player:set_attach(obj, "", {x=0, y=-4.5, z=-4}, {x=0, y=0, z=0})
+		player:set_eye_offset({x=0, y=-6, z=0},{x=0, y=-6, z=0})
+		player:set_properties({visual_size = {x = 2.5, y = 2.5}})
+		player_api.set_animation(player, "sit")
+		self.driver = player:get_player_name()
+	else
+		player:set_detach()
+		player:set_eye_offset({x=0, y=0, z=0},{x=0, y=0, z=0})
+		player:set_properties({visual_size = {x = 1, y = 1}})
+		player_api.set_animation(player, "stand")
+		self.driver = nil
+	end
+end
+
 function minecart.register_cart_names(node_name, entity_name)
 	minecart.tNodeNames[node_name] = entity_name
 	minecart.tEntityNames[entity_name] = true
@@ -152,22 +178,24 @@ function minecart.register_cart_names(node_name, entity_name)
 end
 
 function minecart.add_nodecart(pos, node_name, param2, cargo, owner, userID)
-	local ndef = minetest.registered_nodes[node_name]
-	local node = minetest.get_node(pos)
-	local rail = node.name
-	minetest.swap_node(pos, {name = node_name, param2 = param2})
-	local meta = M(pos)
-	meta:set_string("removed_rail", rail)
-	meta:set_string("owner", owner)
-	meta:set_string("userID", userID)
-	meta:set_string("infotext", 
-			minetest.get_color_escape_sequence("#FFFF00") .. owner .. ": " .. userID)
-	
-	if cargo and ndef.set_cargo then
-		ndef.set_cargo(pos, cargo)
-	end
-	if ndef.after_place_node then
-		ndef.after_place_node(pos)
+	if pos and node_name and param2 and cargo and owner and userID then
+		local ndef = minetest.registered_nodes[node_name]
+		local node = minetest.get_node(pos)
+		local rail = node.name
+		minetest.swap_node(pos, {name = node_name, param2 = param2})
+		local meta = M(pos)
+		meta:set_string("removed_rail", rail)
+		meta:set_string("owner", owner)
+		meta:set_string("userID", userID)
+		meta:set_string("infotext", 
+				minetest.get_color_escape_sequence("#FFFF00") .. owner .. ": " .. userID)
+		
+		if cargo and ndef.set_cargo then
+			ndef.set_cargo(pos, cargo)
+		end
+		if ndef.after_place_node then
+			ndef.after_place_node(pos)
+		end
 	end
 end
 
@@ -196,6 +224,7 @@ function minecart.node_to_entity(pos, node_name, entity_name)
 	if objID then
 		local entity = obj:get_luaentity()
 		entity.owner = owner
+		entity.node_name = node_name
 		entity.userID = userID
 		entity.cargo = cargo
 		obj:set_nametag_attributes({color = "#ffff00", text = owner..": "..userID})
@@ -207,20 +236,20 @@ function minecart.node_to_entity(pos, node_name, entity_name)
 	end
 end
 
-function minecart.entity_to_node(pos, entity, node_name, param2)
+function minecart.entity_to_node(pos, entity)
 	-- Stop sound
 	if entity.sound_handle then
 		minetest.sound_stop(entity.sound_handle)
 		entity.sound_handle = nil
 	end
 	
-	local owner = entity.owner or ""
-	local userID = entity.userID or 0
-	local cargo = entity.cargo or {}
-	
+	local rot = entity.object:get_rotation()
+	local dir = minetest.yaw_to_dir(rot.y)
+	local facedir = minetest.dir_to_facedir(dir)
 	entity.object:remove()
-	minecart.add_nodecart(pos, node_name, param2, cargo, owner, userID)
-	minecart.stop_monitoring(owner, userID)
+	minecart.add_nodecart(pos, entity.node_name, facedir, entity.cargo, entity.owner, entity.userID)
+	minecart.stop_monitoring(entity.owner, entity.userID)
+	minecart.stop_recording(entity, pos)
 end
 
 function minecart.add_node_to_player_inventory(pos, player, node_name)
@@ -245,5 +274,6 @@ function minecart.remove_entity(self, pos, player)
 	end
 	minecart.add_node_to_player_inventory(pos, player, self.node_name or "minecart:cart")
 	minecart.stop_monitoring(self.owner, self.userID)
+	minecart.stop_recording(self, pos)	
 	self.object:remove()
 end

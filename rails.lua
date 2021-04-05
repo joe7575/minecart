@@ -305,7 +305,7 @@ local function get_metadata(pos)
     end
 end
 
-local function get_waypoint(pos, facedir, ctrl)
+local function get_waypoint(pos, facedir, ctrl, uturn)
     local hash = P2H(pos)
 	tWaypoints[hash] = tWaypoints[hash] or get_metadata(pos) or determine_waypoints(pos)
 	local t = tWaypoints[hash]
@@ -320,7 +320,8 @@ local function get_waypoint(pos, facedir, ctrl)
 	if t[facedir] then return t[facedir] end
 	if t[right]   then return t[right]   end
 	if t[left]    then return t[left]    end
-	if t[back]    then return t[back]    end
+	
+	if uturn and t[back] then return t[back]    end
 end
 
 local function after_dig_node(pos, oldnode, oldmetadata, digger)

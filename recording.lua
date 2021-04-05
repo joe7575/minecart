@@ -92,8 +92,8 @@ function minecart.stop_recording(self, pos)
 				minecart.store_route(self.start_pos, route)
 				minetest.chat_send_player(self.driver, S("[minecart] Route stored!"))
 			end
-			minecart.dashboard_destroy(self)
 		end
+		minecart.dashboard_destroy(self)
 	end
 	self.is_recording = false
 	self.waypoints = nil
@@ -116,9 +116,9 @@ function minecart.recording_junctions(self)
 		if player then
 			local ctrl = player:get_player_control()
 			if ctrl.left then
-				self.junctions[P2H(self.waypoint.pos)] = {left = true})
+				self.junctions[P2H(self.waypoint.pos)] = {left = true}
 			elseif ctrl.right then
-				self.junctions[P2H(self.waypoint.pos)] = {right = true})
+				self.junctions[P2H(self.waypoint.pos)] = {right = true}
 			end
 		end
 	end

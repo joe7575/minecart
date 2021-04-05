@@ -11,14 +11,13 @@
 ]]--
 
 local S = minecart.S
-
-print(dump(minecart.on_nodecart_place))
+local M = minetest.get_meta
 
 minetest.register_node("minecart:cart_node", {
 	description = S("Minecart (Sneak+Click to pick up)"),
 	tiles = {
 		-- up, down, right, left, back, front		
-			"carts_cart_top.png",
+			"carts_cart_top.png^minecart_appl_cart_top.png",
 			"carts_cart_top.png",
 			"carts_cart_side.png^minecart_logo.png",
 			"carts_cart_side.png^minecart_logo.png",
@@ -36,12 +35,12 @@ minetest.register_node("minecart:cart_node", {
 			{-8/16,-8/16,-8/16,  8/16,-6/16, 8/16},
 		},
 	},
-	collision_box = {
-        type = "fixed",
-        fixed = {
-            {-8/16,-8/16,-8/16,  8/16,-4/16, 8/16},
-        },
-    },
+--	collision_box = {
+--        type = "fixed",
+--        fixed = {
+--            {-8/16,-8/16,-8/16,  8/16,-4/16, 8/16},
+--        },
+--    },
 	paramtype2 = "facedir",
 	paramtype = "light",
 	use_texture_alpha = minecart.CLIP,
@@ -51,8 +50,15 @@ minetest.register_node("minecart:cart_node", {
 	node_placement_prediction = "",
 	
 	on_place = minecart.on_nodecart_place,
-	--on_punch = minecart.on_nodecart_punch,
-	on_dig = minecart.on_nodecart_dig,
+	on_punch = minecart.on_nodecart_punch,
+	
+	on_rightclick = function(pos, node, clicker)
+		if clicker and clicker:is_player() then
+			-- enter the cart
+			local _, object = minecart.node_to_entity(pos, "minecart:cart_node", "minecart:cart")
+			minecart.manage_attachment(clicker, object, true)
+		end
+	end,
 	
 	set_cargo = function(pos, data)
 		for _,item in ipairs(data or {}) do

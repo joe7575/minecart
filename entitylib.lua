@@ -22,6 +22,26 @@ local recording_waypoints = minecart.recording_waypoints
 local recording_junctions = minecart.recording_junctions
 local tEntityNames = minecart.tEntityNames
 
+local function stop_cart(self)
+	self.is_running = false
+	self.arrival_time = 0
+	local pos = self.object:get_pos()
+	
+	if self.driver then
+		local player = minetest.get_player_by_name(self.driver)
+		if player then
+			minecart.manage_attachment(player, self, false)
+		end
+	end
+	-- ich muss hier prüfen, ob da nicht schon ein Cart steht!!!
+	-- buffer reached
+	if minecart.get_buffer_pos(pos, self.driver) then
+		minecart.entity_to_node(pos, self)
+	else
+		minecart.entity_to_node(pos, self)
+	end
+end
+
 local function running(self)
 	local rot = self.object:get_rotation()
 	local dir = minetest.yaw_to_dir(rot.y)
@@ -38,17 +58,18 @@ local function running(self)
 		-- get waypoint
 		cart_pos = self.object:get_pos()
 		cart_speed = 0
-		self.waypoint = get_waypoint(cart_pos, facedir, {})
+		self.waypoint = get_waypoint(cart_pos, facedir, {}, true)
 	else
 		-- next waypoint
 		cart_pos = vector.new(self.waypoint.pos)
 		local vel = self.object:get_velocity()
 		cart_speed = math.sqrt((vel.x+vel.z)^2 + vel.y^2)
 		local ctrl = self.junctions and self.junctions[P2H(self.waypoint.pos)] or {}
-		self.waypoint = get_waypoint(self.waypoint.pos, facedir, ctrl)
+		self.waypoint = get_waypoint(self.waypoint.pos, facedir, ctrl, cart_speed < 0.1)
 	end
 
 	if not self.waypoint then
+		stop_cart(self)
 		return
 	end
 	
@@ -135,40 +156,46 @@ local function on_step(self, dtime)
 	end
 end
 
-local function on_activate(self, staticdata, dtime_s)
+local function on_entitycard_activate(self, staticdata, dtime_s)
 	self.object:set_armor_groups({immortal=1})
 end
 
--- Entity callback: Node is already converted to an entity.
-local function on_punch(self, puncher, time_from_last_punch, tool_capabilities, dir)
-	if not puncher or not puncher:is_player() or puncher:get_player_name() == self.owner then
-		minecart.push_entitycart(self, dir)
+-- Start the entity cart (or dig by shift+leftclick)
+local function on_entitycard_punch(self, puncher, time_from_last_punch, tool_capabilities, dir)
+	if minecart.is_owner(puncher, self.owner) then
+		if puncher:get_player_control().sneak then
+			-- Dig cart
+			if self.driver then
+				-- remove cart as driver
+				local pos = self.object:get_pos()
+				minecart.remove_entity(self, pos, puncher)
+				minecart.manage_attachment(puncher, self, false)
+			else
+				-- remove cart from outside
+				local pos = self.object:get_pos()
+				minecart.remove_entity(self, pos, puncher)
+			end
+		end
 	end
-	
 end
 	
 -- Player get on / off
-local function on_rightclick(self, clicker)
-	if not clicker or not clicker:is_player() then
-		return
-	end
-	local player_name = clicker:get_player_name()
-	if self.driver and player_name == self.driver then
-		minecart.hud_remove(self)
-		self.driver = nil
-		self.recording = false
-		carts:manage_attachment(clicker, nil)
-	elseif not self.driver then
-		self.driver = player_name
-		carts:manage_attachment(clicker, self.object)
-
-		-- player_api does not update the animation
-		-- when the player is attached, reset to default animation
-		player_api.set_animation(clicker, "stand")
+local function on_entitycard_rightclick(self, clicker)
+	if clicker and clicker:is_player() then
+		-- Get on / off
+		if self.driver then
+			-- get off
+			local pos = self.object:get_pos()
+			minecart.stop_recording(self, pos)	
+			minecart.manage_attachment(clicker, self, false)
+		else
+			-- get on
+			minecart.manage_attachment(clicker, self.object, true)
+		end
 	end
 end
 
-local function on_detach_child(self, child)
+local function on_entitycard_detach_child(self, child)
 	if child and child:get_player_name() == self.driver then
 		self.driver = nil
 	end
@@ -188,22 +215,24 @@ function minecart.get_entitycart_nearby(pos, param2, radius)
 end
 
 function minecart.push_entitycart(self, punch_dir)
+	print("push_entitycart")
 	local pos = self.object:get_pos()
 	local vel = self.object:get_velocity()
 	punch_dir.y = 0
 	local yaw = minetest.dir_to_yaw(punch_dir)
 	self.object:set_rotation({x = 0, y = yaw, z = 0})
-	
+	self.is_running = true
+	self.arrival_time = 0
 end
 
 function minecart.register_cart_entity(entity_name, node_name, entity_def)
 	entity_def.entity_name = entity_name
 	entity_def.node_name = node_name
-	entity_def.on_activate = on_activate
-	entity_def.on_punch = on_punch
+	entity_def.on_activate = on_entitycard_activate
+	entity_def.on_punch = on_entitycard_punch
 	entity_def.on_step = on_step
-	entity_def.on_rightclick = on_rightclick
-	entity_def.on_detach_child = on_detach_child
+	entity_def.on_rightclick = on_entitycard_rightclick
+	entity_def.on_detach_child = on_entitycard_detach_child
 	
 	entity_def.owner = nil
 	entity_def.driver = nil

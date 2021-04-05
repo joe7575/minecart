@@ -72,15 +72,23 @@ function minecart.on_nodecart_place(itemstack, placer, pointed_thing)
 	return itemstack
 end
 
+-- UStart the node cart (or dig by shift+leftclick)
 function minecart.on_nodecart_punch(pos, node, puncher, pointed_thing)
-	--minecart.start_nodecart(pos, node.name, puncher)
-end
-
-function minecart.on_nodecart_dig(pos, node, digger)
-	local ndef = minetest.registered_nodes[node.name]
-	if not ndef.can_dig or ndef.can_dig(pos, digger) then
-		local _, owner, userID = minecart.remove_nodecart(pos)
-		minecart.stop_monitoring(owner, userID)
+	local owner = M(pos):get_string("owner")
+	print(1)
+	if minecart.is_owner(puncher, owner) then
+	print(2)
+		if puncher:get_player_control().sneak then
+	print(3)
+			local ndef = minetest.registered_nodes[node.name]
+			if not ndef.can_dig or ndef.can_dig(pos, puncher) then
+	print(4)
+				minecart.remove_nodecart(pos)
+			end
+		else
+	print(5)
+			minecart.start_nodecart(pos, node.name, puncher)
+		end
 	end
 end
 
@@ -89,8 +97,7 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 		if fields.exit == "Save" or fields.key_enter == "true" then
 			local cart_pos = S2P(player:get_meta():get_string("cart_pos"))
 			local owner = M(cart_pos):get_string("owner")
-			local pname = player:get_player_name()
-			if owner == pname then
+			if minecart.is_owner(player, owner) then
 				local userID = tonumber(fields.userID) or 0
 				M(cart_pos):set_int("userID", userID)
 				M(cart_pos):set_string("infotext", 
