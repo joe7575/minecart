@@ -117,6 +117,7 @@ function minecart.is_owner(player, owner)
 	if not player or not player:is_player() or not owner or owner == "" then
 		return true
 	end
+
 	local name = player:get_player_name()
 	if minetest.check_player_privs(name, "minecart") then
 		return true
@@ -145,7 +146,7 @@ function minecart.get_buffer_name(pos)
 	end
 end
 
-function minecart.manage_attachment(player, obj, get_on)
+function minecart.manage_attachment(player, entity, get_on)
 	if not player then
 		return
 	end
@@ -155,19 +156,19 @@ function minecart.manage_attachment(player, obj, get_on)
 	end
 	player_api.player_attached[player_name] = get_on
 	
-	local self = obj:get_luaentity()
+	local obj = entity.object
 	if get_on then
 		player:set_attach(obj, "", {x=0, y=-4.5, z=-4}, {x=0, y=0, z=0})
 		player:set_eye_offset({x=0, y=-6, z=0},{x=0, y=-6, z=0})
 		player:set_properties({visual_size = {x = 2.5, y = 2.5}})
 		player_api.set_animation(player, "sit")
-		self.driver = player:get_player_name()
+		entity.driver = player:get_player_name()
 	else
 		player:set_detach()
 		player:set_eye_offset({x=0, y=0, z=0},{x=0, y=0, z=0})
 		player:set_properties({visual_size = {x = 1, y = 1}})
 		player_api.set_animation(player, "stand")
-		self.driver = nil
+		entity.driver = nil
 	end
 end
 
@@ -175,27 +176,63 @@ function minecart.register_cart_names(node_name, entity_name)
 	minecart.tNodeNames[node_name] = entity_name
 	minecart.tEntityNames[entity_name] = true
 	minecart.lCartNodeNames[#minecart.lCartNodeNames+1] = node_name
+	minecart.add_raillike_nodes(node_name)
 end
 
 function minecart.add_nodecart(pos, node_name, param2, cargo, owner, userID)
 	if pos and node_name and param2 and cargo and owner and userID then
-		local ndef = minetest.registered_nodes[node_name]
-		local node = minetest.get_node(pos)
-		local rail = node.name
-		minetest.swap_node(pos, {name = node_name, param2 = param2})
-		local meta = M(pos)
-		meta:set_string("removed_rail", rail)
-		meta:set_string("owner", owner)
-		meta:set_string("userID", userID)
-		meta:set_string("infotext", 
-				minetest.get_color_escape_sequence("#FFFF00") .. owner .. ": " .. userID)
+		local pos2
+		if not minecart.is_rail(pos) then
+			pos2 = minetest.find_node_near(pos, 1, minecart.lRails)
+			if not pos2 or not minecart.is_rail(pos2) then
+				pos2 = minetest.find_node_near(pos, 2, minecart.lRails)
+				if not pos2 or not minecart.is_rail(pos2) then
+					pos2 = minetest.find_node_near(pos, 2, {"air"})
+				end
+			end
+		else
+			pos2 = vector.new(pos)
+		end
+		if pos2 then
+			local node = minetest.get_node(pos2)
+			local ndef = minetest.registered_nodes[node_name]
+			local rail = node.name
+			minetest.swap_node(pos2, {name = node_name, param2 = param2})
+			local meta = M(pos2)
+			meta:set_string("removed_rail", rail)
+			meta:set_string("owner", owner)
+			meta:set_string("userID", userID)
+			meta:set_string("infotext", 
+					minetest.get_color_escape_sequence("#FFFF00") .. owner .. ": " .. userID)
+			
+			if cargo and ndef.set_cargo then
+				ndef.set_cargo(pos2, cargo)
+			end
+			if ndef.after_place_node then
+				ndef.after_place_node(pos2)
+			end
+		else
+			minetest.add_item(pos, ItemStack({name = node_name}))
+		end
+	end
+end
+
+function minecart.add_entitycart(pos, node_name, entity_name, vel, cargo, owner, userID)
+	local obj = minetest.add_entity(pos, entity_name)
+	local objID = minecart.get_object_id(obj)
+	
+	if objID then
+		local entity = obj:get_luaentity()
+		entity.start_pos = pos
+		entity.owner = owner
+		entity.node_name = node_name
+		entity.userID = userID
+		entity.cargo = cargo
+		obj:set_nametag_attributes({color = "#ffff00", text = owner..": "..userID})
+		obj:set_velocity(vel)
 		
-		if cargo and ndef.set_cargo then
-			ndef.set_cargo(pos, cargo)
-		end
-		if ndef.after_place_node then
-			ndef.after_place_node(pos)
-		end
+		minecart.start_monitoring(owner, userID, objID, pos, node_name, entity_name, cargo)
+		return objID, obj
 	end
 end
 
@@ -216,20 +253,9 @@ end
 function minecart.node_to_entity(pos, node_name, entity_name)
 	-- Remove node
 	local cargo, owner, userID = minecart.remove_nodecart(pos)
-	
-	-- Add entity
-	local obj = minetest.add_entity(pos, entity_name)
-	local objID = minecart.get_object_id(obj)
-	
+	local objID, obj = minecart.add_entitycart(pos, node_name, 
+			entity_name, {x = 0, y = 0, z = 0}, cargo, owner, userID)
 	if objID then
-		local entity = obj:get_luaentity()
-		entity.owner = owner
-		entity.node_name = node_name
-		entity.userID = userID
-		entity.cargo = cargo
-		obj:set_nametag_attributes({color = "#ffff00", text = owner..": "..userID})
-		
-		minecart.start_monitoring(owner, userID, objID, pos, node_name, entity_name, cargo)
 		return objID, obj
 	else
 		print("Entity has no ID")
@@ -276,4 +302,8 @@ function minecart.remove_entity(self, pos, player)
 	minecart.stop_monitoring(self.owner, self.userID)
 	minecart.stop_recording(self, pos)	
 	self.object:remove()
+end
+
+function minecart.back_to_start(self)
+	minecart.add_nodecart(self.start_pos, self.node_name, 0, self.cargo, self.owner, self.userID)
 end

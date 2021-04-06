@@ -494,20 +494,24 @@ local function monitoring(cycle)
     while cart and cart.objID do
 		local entity = minetest.luaentities[cart.objID]
 		if entity then  -- cart entity running
-			local pos = vector.round(entity.object:get_pos())
-			print("monitoring", cycle, P2S(pos))
+			cart.last_pos = vector.round(entity.object:get_pos())
+			--print("monitoring", cycle, cart.userID, P2S(cart.pos))
+			push(cycle, cart)
+		else
+			local pos = cart.last_pos or cart.start_pos
+			minecart.add_nodecart(pos, cart.node_name, 0, cart.cargo, cart.owner, cart.userID)
+			print("cart to node", cycle, cart.userID, P2S(pos))
 		end
-		push(cycle, cart)
         cart = pop(cycle)
 	end
 	minetest.after(2, monitoring, cycle + 1)
 end
 
---minetest.after(2, monitoring, 1)
+minetest.after(2, monitoring, 1)
 
 
 function minecart.start_monitoring(owner, userID, objID, pos, node_name, entity_name, cargo)
-	print("start_monitoring", owner, userID)
+	--print("start_monitoring", owner, userID)
 	tRunningCarts[owner] = tRunningCarts[owner] or {}
 	tRunningCarts[owner][userID] = {
 		owner = owner,

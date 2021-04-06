@@ -27,7 +27,8 @@ end
 -- Convert node to entity and start cart
 function minecart.start_nodecart(pos, node_name, puncher)
 	local owner = M(pos):get_string("owner")
-	if minecart.is_owner(puncher, owner) then
+	-- Only the owner or a noplayer can start the cart, but owner has to be online
+	if minecart.is_owner(puncher, owner) and minetest.get_player_by_name(owner) then
 		local entity_name = minecart.tNodeNames[node_name]
 		local objID, obj = minecart.node_to_entity(pos, node_name, entity_name)
 		if objID then
@@ -72,21 +73,16 @@ function minecart.on_nodecart_place(itemstack, placer, pointed_thing)
 	return itemstack
 end
 
--- UStart the node cart (or dig by shift+leftclick)
+-- Start the node cart (or dig by shift+leftclick)
 function minecart.on_nodecart_punch(pos, node, puncher, pointed_thing)
 	local owner = M(pos):get_string("owner")
-	print(1)
 	if minecart.is_owner(puncher, owner) then
-	print(2)
 		if puncher:get_player_control().sneak then
-	print(3)
 			local ndef = minetest.registered_nodes[node.name]
 			if not ndef.can_dig or ndef.can_dig(pos, puncher) then
-	print(4)
 				minecart.remove_nodecart(pos)
 			end
 		else
-	print(5)
 			minecart.start_nodecart(pos, node.name, puncher)
 		end
 	end

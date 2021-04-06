@@ -83,7 +83,7 @@ function minecart.stop_recording(self, pos)
 		local dest_pos = minecart.get_buffer_pos(pos, self.driver)
 		local player = minetest.get_player_by_name(self.driver)
 		if dest_pos and player then
-			if self.start_pos and vector.equals(self.start_pos, dest_pos) then
+			if self.start_pos then
 				local route = {
 					dest_pos = dest_pos,
 					waypoints = self.waypoints,

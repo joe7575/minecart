@@ -20,23 +20,44 @@ local get_node_lvm = minecart.get_node_lvm
 local SLOPE_ACCELERATION = 1
 local MAX_SPEED = 8
 local SLOWDOWN = 0.4
+local MAX_NODES = 100
 
 --waypoint = {
 --	dot = travel direction, 
 --	pos = destination pos, 
---	power = 10 times the waypoint speed (as int), 
---	cart_pos = destination cart pos
+--	power = 100 times the waypoint speed (as int), 
+--	limit = 100 times the speed limit (as int),
 --}
 --
 -- waypoints = {facedir = waypoint,...}
 
 local tWaypoints = {} -- {pos_hash = waypoints, ...}
+
+-- Real rails from the mod carts
 local tRails = {
 	["carts:rail"] = true,
 	["carts:powerrail"] = true,
 	["carts:brakerail"] = true,
 }
+-- Rails plus node carts used to find waypoints, added via add_raillike_nodes
+local tRailsExt = {
+	["carts:rail"] = true,
+	["carts:powerrail"] = true,
+	["carts:brakerail"] = true,
+}
+
+local tSigns = {
+	["minecart:speed1"] = 1, 
+	["minecart:speed2"] = 2, 
+	["minecart:speed4"] = 4,
+}
+
+local lSigns = {"minecart:speed1", "minecart:speed2", "minecart:speed4"}
+
+-- Real rails from the mod carts
 local lRails = {"carts:rail", "carts:powerrail", "carts:brakerail"}
+-- Rails plus node carts used to find waypoints, , added via add_raillike_nodes
+local lRailsExt = {"carts:rail", "carts:powerrail", "carts:brakerail"}
 
 local Dot2Dir = {}
 local Dir2Dot = {}
@@ -73,12 +94,12 @@ local function check_front_up_down(pos, facedir, test_for_slope)
 	local npos
 	
     npos = vector.add(pos, Facedir2Dir[facedir]) 
-    if tRails[get_node_lvm(npos).name] then
+    if tRailsExt[get_node_lvm(npos).name] then
 		-- We also have to check the next node to find the next upgoing rail.
 		if test_for_slope then
 			npos = vector.add(npos, Facedir2Dir[facedir])
 			npos.y = npos.y + 1
-			if tRails[get_node_lvm(npos).name] then
+			if tRailsExt[get_node_lvm(npos).name] then
 				--print("check_front_up_down: 2up")
 				return facedir * 3 + 3 -- up
 			end
@@ -88,13 +109,13 @@ local function check_front_up_down(pos, facedir, test_for_slope)
     end
 
     npos.y = npos.y - 1
-    if tRails[get_node_lvm(npos).name] then
+    if tRailsExt[get_node_lvm(npos).name] then
 		--print("check_front_up_down: down")
         return facedir * 3 + 1 -- down
     end
 	
     npos.y = npos.y + 2
-    if tRails[get_node_lvm(npos).name] then
+    if tRailsExt[get_node_lvm(npos).name] then
 		--print("check_front_up_down: up")
         return facedir * 3 + 3 -- up
     end
@@ -128,7 +149,7 @@ local function delete_rail_metadata(pos, nearby)
 	if nearby then
 		local pos1 = {x = pos.x - 1, y = pos.y, z = pos.z - 1}
 		local pos2 = {x = pos.x + 1, y = pos.y, z = pos.z + 1}
-		for _, npos in ipairs(minetest.find_nodes_in_area_under_air(pos1, pos2, lRails)) do
+		for _, npos in ipairs(minetest.find_nodes_in_area_under_air(pos1, pos2, lRailsExt)) do
 			delete(npos)
 		end
 	else
@@ -147,17 +168,28 @@ local function get_rail_power(pos, dot)
 	return (carts.railparams[node.name] or {}).acceleration or 0
 end
 
+local function check_speed_limit(dot, pos)
+	local facedir = math.floor((dot - 1) / 3)
+	facedir = (facedir + 1) % 4 -- turn right
+	local npos = vector.add(pos, Facedir2Dir[facedir])
+	local node = get_node_lvm(npos)
+	return tSigns[node.name] or MAX_SPEED
+end
+
 local function find_next_waypoint(pos, dot)
-	print("find_next_waypoint", P2S(pos), dot)
+	--print("find_next_waypoint", P2S(pos), dot)
 	local npos = vector.new(pos)
 	local facedir = math.floor((dot - 1) / 3)
 	local y = ((dot - 1) % 3) - 1
 	local power = 0
 	local cnt = 0
-	while cnt < 1000 do
+	
+	while cnt < MAX_NODES do
 		npos = vector.add(npos, Dot2Dir[dot])
 		power = power + get_rail_power(npos, dot)
 		local dots = find_rails_nearby(npos, facedir, true)
+		-- check for speed sign as end of the section
+		local speed = check_speed_limit(dot, npos)
 		
 		if #dots == 0 then -- end of rail
 			return npos, power
@@ -172,23 +204,26 @@ local function find_next_waypoint(pos, dot)
 				return npos, power
 			end
 			return npos, power
+		elseif speed < 8 then -- sign detected
+			print("check_speed_limit", speed)
+			return npos, power
 		end
 		cnt = cnt + 1
 	end
-	return pos, 0
+	return npos, power
 end
 
 local function find_next_meta(pos, facedir)
-	print("find_next_meta", P2S(pos), facedir)
+	--print("find_next_meta", P2S(pos), facedir)
 	local npos = vector.new(pos)
 	local cnt = 0
 	local old_dot
-	while cnt < 1000 do
-		local dot = check_front_up_down(pos, facedir)
+
+	while cnt <= MAX_NODES do
+		local dot = check_front_up_down(npos, facedir)
 		old_dot = old_dot or dot
 		if dot and dot == old_dot then
 			npos = vector.add(npos, Dot2Dir[dot])
-			print("find_next_meta", P2S(npos), facedir, M(npos):contains("waypoints"))
 			if M(npos):contains("waypoints") then
 				return npos
 			end
@@ -197,6 +232,7 @@ local function find_next_meta(pos, facedir)
 		end
 		cnt = cnt + 1
 	end
+	return npos
 end	
 
 -- Search for rails in all 4 directions
@@ -250,39 +286,23 @@ local function is_waypoint(dots)
 	return false
 end	
 
---local function is_slope(pos)
---	-- Use invalid facedir to be able to test all 4 directions
---	local dots = find_rails_nearby(pos, 4)
---	if #dots > 2 then 
---		return
---	elseif #dots == 2 then
---		local y1 = ((dots[1] - 1) % 3) - 1
---		local y2 = ((dots[2] - 1) % 3) - 1
---		if y1 ~= y2 then return dots end
---	else -- 1
---		local y = ((dots[1] - 1) % 3) - 1
---		if y ~= 0 then return dots end
---	end
---	return
---end	
-
 local function determine_waypoints(pos)
 	--print("determine_waypoints")
-	local t = minetest.get_us_time()
     local waypoints = {}
 	local dots = {}
 	for _,dot in ipairs(find_all_rails_nearby(pos, 0)) do
 		local npos, power = find_next_waypoint(pos, dot)
-		local facedir = math.floor((dot - 1) / 3)
 		power = math.floor(recalc_power(dot, power, pos, npos) * 100)
-		waypoints[facedir] = {dot = dot, pos = npos, power = power}
+		-- check for speed limit
+		local limit = check_speed_limit(dot, pos) * 100
+		local facedir = math.floor((dot - 1) / 3)
+		waypoints[facedir] = {dot = dot, pos = npos, power = power, limit = limit}
 		dots[#dots + 1] = dot
 	end
-	if is_waypoint(dots) then
+	--if is_waypoint(dots) then
 		M(pos):set_string("waypoints", minetest.serialize(waypoints))
-	end
-	t = minetest.get_us_time() - t
-	print("time = ", t)
+		minecart.set_marker(pos, "add")
+	--end
     return waypoints
 end
 
@@ -344,19 +364,36 @@ end
 minecart.MAX_SPEED = MAX_SPEED
 minecart.Dot2Dir = Dot2Dir
 minecart.Dir2Dot = Dir2Dot 
---minecart.find_next_waypoint = find_next_waypoint
 minecart.get_waypoint = get_waypoint
+minecart.lRails = lRails
+
+-- used by speed limit signs
+function minecart.delete_waypoints(pos)
+	local pos1 = {x = pos.x - 1, y = pos.y, z = pos.z - 1}
+	local pos2 = {x = pos.x + 1, y = pos.y, z = pos.z + 1}
+	local posses = minetest.find_nodes_in_area(pos1, pos2, lRailsExt)
+	for _, pos in ipairs(posses) do
+		print("delete_waypoints", P2S(pos))
+		delete_waypoints(pos)
+	end
+end
 
 function minecart.is_rail(pos)
 	return tRails[get_node_lvm(pos).name] ~= nil
 end
 
+function minecart.add_raillike_nodes(name)
+	tRailsExt[name] = true
+	lRailsExt[#lRailsExt + 1] = name
+end
+
 minetest.register_lbm({
 	label = "Delete waypoints",
 	name = "minecart:rails",
-	nodenames = lRails,
+	nodenames = lRailsExt,
 	run_at_every_load = true,
 	action = function(pos, node)
 		M(pos):set_string("waypoints", "")
 	end,
 })
+

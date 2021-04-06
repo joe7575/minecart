@@ -17,6 +17,9 @@ minecart.version = 2.00
 
 minecart.hopper_enabled = minetest.settings:get_bool("minecart_hopper_enabled") ~= false
 minecart.teleport_enabled = minetest.settings:get_bool("minecart_teleport_enabled") == true
+-- Test for MT 5.4 new string mode
+minecart.CLIP = minetest.features.use_texture_alpha_string_modes and "clip" or true
+
 
 minecart.S = minetest.get_translator("minecart")
 local MP = minetest.get_modpath("minecart")
@@ -33,6 +36,7 @@ dofile(MP .. "/minecart.lua")
 dofile(MP .. "/buffer.lua")
 dofile(MP .. "/protection.lua")
 dofile(MP .. "/tool.lua")
+dofile(MP .. "/signs.lua")
 
 if minecart.hopper_enabled then
 	dofile(MP .. "/hopper.lua")

@@ -35,7 +35,6 @@ local function test_get_route(pos, node, player, ctrl)
 		print("test_get_route", string.format("dist = %u, dot = %u, power = %d", 
 				vector.distance(pos, route.pos), route.dot, route.power))
 		minecart.set_marker(route.pos, "pos")
-		minecart.set_marker(route.cart_pos, "cart")
 	end
 end
 

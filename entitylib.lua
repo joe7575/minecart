@@ -33,13 +33,7 @@ local function stop_cart(self)
 			minecart.manage_attachment(player, self, false)
 		end
 	end
-	-- ich muss hier prüfen, ob da nicht schon ein Cart steht!!!
-	-- buffer reached
-	if minecart.get_buffer_pos(pos, self.driver) then
-		minecart.entity_to_node(pos, self)
-	else
-		minecart.entity_to_node(pos, self)
-	end
+	minecart.entity_to_node(pos, self)
 end
 
 local function running(self)
@@ -52,12 +46,12 @@ local function running(self)
 	if self.reenter then -- through monitoring
 		cart_pos = H2P(self.reenter[1])
 		cart_speed = self.reenter[3]
-		self.waypoint = {pos = H2P(self.reenter[2]), power = 0, dot = self.reenter[4]}
+		self.waypoint = {pos = H2P(self.reenter[2]), power = 0, limit = MAX_SPEED, dot = self.reenter[4]}
 		self.reenter = nil
 	elseif not self.waypoint then
 		-- get waypoint
 		cart_pos = self.object:get_pos()
-		cart_speed = 0
+		cart_speed = 2
 		self.waypoint = get_waypoint(cart_pos, facedir, {}, true)
 	else
 		-- next waypoint
@@ -75,10 +69,15 @@ local function running(self)
 	
 	-- Calc speed
 	local rail_power = self.waypoint.power / 100
+	local speed_limit = self.waypoint.limit / 100
+	print("speed", rail_power, speed_limit)
 	if rail_power <= 0 then
 		new_speed = math.max(cart_speed + rail_power, 0)
+		new_speed = math.min(new_speed, speed_limit)
+	elseif rail_power < cart_speed then
+		new_speed = math.min((cart_speed + rail_power) / 2, speed_limit)
 	else
-		new_speed = math.min(rail_power, MAX_SPEED)
+		new_speed = math.min(rail_power, speed_limit)
 	end
 	-- Speed corrections
 	local new_dir = Dot2Dir[self.waypoint.dot]
@@ -123,7 +122,7 @@ local function play_sound(self)
 	self.sound_handle = minetest.sound_play(
 		"carts_cart_moving", {
 		object = self.object,
-		loop = true,
+		gain = self.speed / MAX_SPEED,
 	})
 end
 
@@ -135,7 +134,6 @@ local function on_step(self, dtime)
 			running(self)
 		end
 		
-		self.sound_ttl = (self.sound_ttl or 0) + dtime
 		if (self.sound_ttl or 0) <= self.timebase then
 			play_sound(self)
 			self.sound_ttl = self.timebase + 1.0
@@ -190,7 +188,7 @@ local function on_entitycard_rightclick(self, clicker)
 			minecart.manage_attachment(clicker, self, false)
 		else
 			-- get on
-			minecart.manage_attachment(clicker, self.object, true)
+			minecart.manage_attachment(clicker, self, true)
 		end
 	end
 end
