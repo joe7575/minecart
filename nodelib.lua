@@ -27,15 +27,29 @@ end
 -- Convert node to entity and start cart
 function minecart.start_nodecart(pos, node_name, puncher)
 	local owner = M(pos):get_string("owner")
+	local userID = M(pos):get_int("userID")
 	-- Only the owner or a noplayer can start the cart, but owner has to be online
-	if minecart.is_owner(puncher, owner) and minetest.get_player_by_name(owner) then
+	if minecart.is_owner(puncher, owner) and minetest.get_player_by_name(owner) and
+			userID ~= 0 then
 		local entity_name = minecart.tNodeNames[node_name]
 		local objID, obj = minecart.node_to_entity(pos, node_name, entity_name)
 		if objID then
 			local entity = obj:get_luaentity()
 			entity.is_running = true
 			entity.arrival_time = 0
+			minecart.start_monitoring(owner, userID, objID)
 		end
+	end
+end
+
+function minecart.show_formspec(pos, clicker)
+	local owner = M(pos):get_string("owner")
+	if minecart.is_owner(clicker, owner) then
+		minetest.show_formspec(owner, "minecart:userID_node",
+					"size[4,3]" ..
+					"label[0,0;Enter cart number:]" ..
+					"field[1,1;3,1;userID;;]" ..
+					"button_exit[1,2;2,1;exit;Save]")	
 	end
 end
 
@@ -49,9 +63,11 @@ function minecart.on_nodecart_place(itemstack, placer, pointed_thing)
 	if minecart.is_rail(pointed_thing.under) then
 		minecart.add_nodecart(pointed_thing.under, node_name, param2, {}, owner, 0)
 		placer:get_meta():set_string("cart_pos", P2S(pointed_thing.under))
+		minecart.show_formspec(pointed_thing.under, placer)
 	elseif minecart.is_rail(pointed_thing.above) then
 		minecart.add_nodecart(pointed_thing.above, node_name, param2, {}, owner, 0)
 		placer:get_meta():set_string("cart_pos", P2S(pointed_thing.above))
+		minecart.show_formspec(pointed_thing.above, placer)
 	else
 		return itemstack
 	end
@@ -64,23 +80,20 @@ function minecart.on_nodecart_place(itemstack, placer, pointed_thing)
 		itemstack:take_item()
 	end
 	
-	minetest.show_formspec(owner, "minecart:userID_node",
-                "size[4,3]" ..
-                "label[0,0;Enter cart number:]" ..
-                "field[1,1;3,1;userID;;]" ..
-                "button_exit[1,2;2,1;exit;Save]")	
-	
 	return itemstack
 end
 
 -- Start the node cart (or dig by shift+leftclick)
 function minecart.on_nodecart_punch(pos, node, puncher, pointed_thing)
+	print("on_nodecart_punch")
 	local owner = M(pos):get_string("owner")
+	local userID = M(pos):get_int("userID")
 	if minecart.is_owner(puncher, owner) then
 		if puncher:get_player_control().sneak then
 			local ndef = minetest.registered_nodes[node.name]
 			if not ndef.can_dig or ndef.can_dig(pos, puncher) then
 				minecart.remove_nodecart(pos)
+				minecart.monitoring_remove_cart(owner, userID)
 			end
 		else
 			minecart.start_nodecart(pos, node.name, puncher)
@@ -90,15 +103,24 @@ end
 
 minetest.register_on_player_receive_fields(function(player, formname, fields)
     if formname == "minecart:userID_node" then
+		print(dump(fields))
 		if fields.exit == "Save" or fields.key_enter == "true" then
+			print(1)
 			local cart_pos = S2P(player:get_meta():get_string("cart_pos"))
 			local owner = M(cart_pos):get_string("owner")
 			if minecart.is_owner(player, owner) then
+			print(2)
 				local userID = tonumber(fields.userID) or 0
-				M(cart_pos):set_int("userID", userID)
-				M(cart_pos):set_string("infotext", 
-						minetest.get_color_escape_sequence("#FFFF00") ..
-						player:get_player_name() .. ": " .. userID)
+				if minecart.userID_available(owner, userID) then
+			print(3)
+					M(cart_pos):set_int("userID", userID)
+					M(cart_pos):set_string("infotext", 
+							minetest.get_color_escape_sequence("#FFFF00") ..
+							player:get_player_name() .. ": " .. userID)
+					local node = minetest.get_node(cart_pos)
+					local entity_name = minecart.tNodeNames[node.name]
+					minecart.monitoring_add_cart(owner, userID, cart_pos, node.name, entity_name, {})
+				end
 			end
 		end
 		return true

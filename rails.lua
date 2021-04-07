@@ -50,9 +50,10 @@ local tSigns = {
 	["minecart:speed1"] = 1, 
 	["minecart:speed2"] = 2, 
 	["minecart:speed4"] = 4,
+	["minecart:speed8"] = 8,
 }
 
-local lSigns = {"minecart:speed1", "minecart:speed2", "minecart:speed4"}
+local lSigns = {"minecart:speed1", "minecart:speed2", "minecart:speed4", "minecart:speed8"}
 
 -- Real rails from the mod carts
 local lRails = {"carts:rail", "carts:powerrail", "carts:brakerail"}
@@ -173,7 +174,7 @@ local function check_speed_limit(dot, pos)
 	facedir = (facedir + 1) % 4 -- turn right
 	local npos = vector.add(pos, Facedir2Dir[facedir])
 	local node = get_node_lvm(npos)
-	return tSigns[node.name] or MAX_SPEED
+	return tSigns[node.name]
 end
 
 local function find_next_waypoint(pos, dot)
@@ -204,8 +205,8 @@ local function find_next_waypoint(pos, dot)
 				return npos, power
 			end
 			return npos, power
-		elseif speed < 8 then -- sign detected
-			print("check_speed_limit", speed)
+		elseif speed then -- sign detected
+			--print("check_speed_limit", speed)
 			return npos, power
 		end
 		cnt = cnt + 1
@@ -213,21 +214,21 @@ local function find_next_waypoint(pos, dot)
 	return npos, power
 end
 
-local function find_next_meta(pos, facedir)
-	--print("find_next_meta", P2S(pos), facedir)
+local function find_next_meta(pos, dot)
+	--print("find_next_meta", P2S(pos), dot)
 	local npos = vector.new(pos)
+	local facedir = math.floor((dot - 1) / 3)
+	local old_dot = dot
 	local cnt = 0
-	local old_dot
 
 	while cnt <= MAX_NODES do
+		print("find_next_meta", facedir, cnt)
+		npos = vector.add(npos, Dot2Dir[dot])
 		local dot = check_front_up_down(npos, facedir)
-		old_dot = old_dot or dot
-		if dot and dot == old_dot then
-			npos = vector.add(npos, Dot2Dir[dot])
-			if M(npos):contains("waypoints") then
-				return npos
-			end
-		else
+		if M(npos):contains("waypoints") then
+			return npos
+		end
+		if dot ~= old_dot then
 			return
 		end
 		cnt = cnt + 1
@@ -294,7 +295,7 @@ local function determine_waypoints(pos)
 		local npos, power = find_next_waypoint(pos, dot)
 		power = math.floor(recalc_power(dot, power, pos, npos) * 100)
 		-- check for speed limit
-		local limit = check_speed_limit(dot, pos) * 100
+		local limit = (check_speed_limit(dot, pos) or MAX_SPEED) * 100
 		local facedir = math.floor((dot - 1) / 3)
 		waypoints[facedir] = {dot = dot, pos = npos, power = power, limit = limit}
 		dots[#dots + 1] = dot
@@ -309,8 +310,7 @@ end
 local function delete_waypoints(pos)
 	-- Use invalid facedir to be able to test all 4 directions
 	for _, dot in ipairs(find_rails_nearby(pos, 4)) do
-		local facedir = math.floor((dot - 1) / 3)
-		local npos = find_next_meta(pos, facedir)
+		local npos = find_next_meta(pos, dot)
 		if npos then
 			delete_rail_metadata(npos, true)
 		end		
@@ -356,7 +356,7 @@ end
 
 for name,_ in pairs(tRails) do
 	minetest.override_item(name, {
-			after_dig_node = after_dig_node, 
+			after_destruct = after_dig_node, 
 			after_place_node = after_place_node
 	})
 end	

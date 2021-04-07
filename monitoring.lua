@@ -491,11 +491,11 @@ end
 local function monitoring(cycle)
     local cart = pop(cycle)
 
-    while cart and cart.objID do
+    while cart and cart.objID and cart.objID > 0 do
 		local entity = minetest.luaentities[cart.objID]
 		if entity then  -- cart entity running
 			cart.last_pos = vector.round(entity.object:get_pos())
-			--print("monitoring", cycle, cart.userID, P2S(cart.pos))
+			print("monitoring", cycle, cart.userID, P2S(cart.pos))
 			push(cycle, cart)
 		else
 			local pos = cart.last_pos or cart.start_pos
@@ -504,35 +504,62 @@ local function monitoring(cycle)
 		end
         cart = pop(cycle)
 	end
+	if cart and not cart.objID and tRunningCarts[cart.owner] then
+		tRunningCarts[cart.owner][cart.userID] = nil
+	end
 	minetest.after(2, monitoring, cycle + 1)
 end
 
 minetest.after(2, monitoring, 1)
 
 
-function minecart.start_monitoring(owner, userID, objID, pos, node_name, entity_name, cargo)
-	--print("start_monitoring", owner, userID)
+function minecart.monitoring_add_cart(owner, userID, pos, node_name, entity_name, cargo)
+	print("monitoring_add_cart", owner, userID)
 	tRunningCarts[owner] = tRunningCarts[owner] or {}
 	tRunningCarts[owner][userID] = {
 		owner = owner,
 		userID = userID,
-		objID = objID,
+		objID = 0,
 		start_pos = pos,
 		node_name = node_name,
 		entity_name = entity_name,
 		cargo = cargo,
 		section = {},
 	}
-	push(0, tRunningCarts[owner][userID])
 end
 	
-function minecart.stop_monitoring(owner, userID)
-	print("stop_monitoring", owner, userID)
+function minecart.start_monitoring(owner, userID, objID)
+	print("start_monitoring", owner, userID)
 	if tRunningCarts[owner] and tRunningCarts[owner][userID] then
-		tRunningCarts[owner][userID].objID = nil
+		tRunningCarts[owner][userID].objID = objID
+		push(0, tRunningCarts[owner][userID])
 	end
 end
 
+function minecart.stop_monitoring(owner, userID)
+	print("stop_monitoring", owner, userID)
+	if tRunningCarts[owner] and tRunningCarts[owner][userID] then
+		tRunningCarts[owner][userID].objID = 0
+	end
+end
+
+function minecart.monitoring_remove_cart(owner, userID)
+	print("monitoring_remove_cart", owner, userID)
+	if tRunningCarts[owner] and tRunningCarts[owner][userID] then
+		tRunningCarts[owner][userID].objID = nil
+		tRunningCarts[owner][userID] = nil
+	end
+end
+
+function minecart.userID_available(owner, userID)
+	return not tRunningCarts[owner] or tRunningCarts[owner][userID] == nil
+end
+
+function minecart.get_cart_monitoring_data(owner, userID)
+	if tRunningCarts[owner] then
+		return tRunningCarts[owner][userID]
+	end
+end
 
 function minecart.get_junction(self, pos, dir)
 	local junctions = CartsOnRail[self.myID] and CartsOnRail[self.myID].junctions

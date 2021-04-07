@@ -20,8 +20,8 @@ local function register_sign(def)
 		node_box = {
 			type = "fixed",
 			fixed = {
-				{ -1/16, -8/16, -1/16,   1/16, 4/16, 1/16},
-				{ -5/16, -2/16, -2/16,   5/16, 8/16, -1/16},
+				{ -1/16, -8/16, -1/16,   1/16,-2/16, 1/16},
+				{ -5/16, -2/16, -1/32,   5/16, 8/16, 1/32},
 			},
 		},
 		paramtype2 = "facedir",
@@ -67,6 +67,12 @@ register_sign({
 	name = "speed4",
 	description = S('Speed "4"'),
 	image = "minecart_sign4.png",
+})
+
+register_sign({
+	name = "speed8",
+	description = S('Speed "8"'),
+	image = "minecart_sign8.png",
 })
 
 --minetest.register_craft({

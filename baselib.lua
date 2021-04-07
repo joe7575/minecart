@@ -201,7 +201,7 @@ function minecart.add_nodecart(pos, node_name, param2, cargo, owner, userID)
 			local meta = M(pos2)
 			meta:set_string("removed_rail", rail)
 			meta:set_string("owner", owner)
-			meta:set_string("userID", userID)
+			meta:set_int("userID", userID)
 			meta:set_string("infotext", 
 					minetest.get_color_escape_sequence("#FFFF00") .. owner .. ": " .. userID)
 			
@@ -231,7 +231,7 @@ function minecart.add_entitycart(pos, node_name, entity_name, vel, cargo, owner,
 		obj:set_nametag_attributes({color = "#ffff00", text = owner..": "..userID})
 		obj:set_velocity(vel)
 		
-		minecart.start_monitoring(owner, userID, objID, pos, node_name, entity_name, cargo)
+		minecart.start_monitoring(owner, userID, objID)
 		return objID, obj
 	end
 end
@@ -301,9 +301,14 @@ function minecart.remove_entity(self, pos, player)
 	minecart.add_node_to_player_inventory(pos, player, self.node_name or "minecart:cart")
 	minecart.stop_monitoring(self.owner, self.userID)
 	minecart.stop_recording(self, pos)	
+	minecart.monitoring_remove_cart(self.owner, self.userID)
 	self.object:remove()
 end
 
 function minecart.back_to_start(self)
-	minecart.add_nodecart(self.start_pos, self.node_name, 0, self.cargo, self.owner, self.userID)
+	local cart = minecart.get_cart_monitoring_data(self.owner, self.userID)
+	if cart then
+		minecart.add_nodecart(cart.start_pos, cart.node_name, 0, cart.cargo, self.owner, self.userID)
+		minecart.stop_monitoring(self.owner, self.userID)
+	end
 end

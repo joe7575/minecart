@@ -48,15 +48,20 @@ minetest.register_node("minecart:cart_node", {
 	is_ground_content = false,
 	groups = {cracky = 2, crumbly = 2, choppy = 2},
 	node_placement_prediction = "",
+	diggable = false,
 	
 	on_place = minecart.on_nodecart_place,
 	on_punch = minecart.on_nodecart_punch,
-	
+
 	on_rightclick = function(pos, node, clicker)
 		if clicker and clicker:is_player() then
-			-- enter the cart
-			local _, object = minecart.node_to_entity(pos, "minecart:cart_node", "minecart:cart")
-			minecart.manage_attachment(clicker, object:get_luaentity(), true)
+			if M(pos):get_int("userID") ~= 0 then
+				-- enter the cart
+				local _, object = minecart.node_to_entity(pos, "minecart:cart_node", "minecart:cart")
+				minecart.manage_attachment(clicker, object:get_luaentity(), true)
+			else 
+				minecart.show_formspec(pos, clicker)
+			end
 		end
 	end,
 	

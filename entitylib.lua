@@ -17,7 +17,6 @@ local MAX_SPEED = minecart.MAX_SPEED
 local Dot2Dir = minecart.Dot2Dir
 local Dir2Dot = minecart.Dir2Dot
 local get_waypoint = minecart.get_waypoint
-local monitoring = minecart.monitoring
 local recording_waypoints = minecart.recording_waypoints
 local recording_junctions = minecart.recording_junctions
 local tEntityNames = minecart.tEntityNames
@@ -70,7 +69,7 @@ local function running(self)
 	-- Calc speed
 	local rail_power = self.waypoint.power / 100
 	local speed_limit = self.waypoint.limit / 100
-	print("speed", rail_power, speed_limit)
+	--print("speed", rail_power, speed_limit)
 	if rail_power <= 0 then
 		new_speed = math.max(cart_speed + rail_power, 0)
 		new_speed = math.min(new_speed, speed_limit)
@@ -101,12 +100,17 @@ local function running(self)
 	-- Calc velocity, rotation and arrival_time
 	local yaw = minetest.dir_to_yaw(new_dir)
 	local pitch = new_dir.y * math.pi/4
-	local dist = math.max(vector.distance(cart_pos, self.waypoint.pos), 1)
+	local dist = vector.distance(cart_pos, self.waypoint.pos)
 	local vel = vector.multiply(new_dir, new_speed / (new_dir.y ~= 0 and 1.41 or 1))
 	self.arrival_time = self.timebase + (dist / new_speed)
 	self.speed = new_speed  -- needed for recording
 	self.dot = Dir2Dot[new_dir]  -- needed for recording
 	
+	if new_speed < 0.1 or dist < 0.5 then
+		stop_cart(self)
+		return
+	end
+		
 	self.object:set_pos(cart_pos)
 	self.object:set_rotation({x = pitch, y = yaw, z = 0})
 	self.object:set_velocity(vel)
@@ -184,7 +188,7 @@ local function on_entitycard_rightclick(self, clicker)
 		if self.driver then
 			-- get off
 			local pos = self.object:get_pos()
-			minecart.stop_recording(self, pos)	
+			minecart.entity_to_node(pos, self)
 			minecart.manage_attachment(clicker, self, false)
 		else
 			-- get on
