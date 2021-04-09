@@ -33,6 +33,11 @@ local MAX_NODES = 100
 
 local tWaypoints = {} -- {pos_hash = waypoints, ...}
 
+local tRailsPower = {
+	["carts:rail"] = 0,
+	["carts:powerrail"] = 1,
+	["carts:brakerail"] = 0,
+}
 -- Real rails from the mod carts
 local tRails = {
 	["carts:rail"] = true,
@@ -143,7 +148,7 @@ local function delete_rail_metadata(pos, nearby)
 			local hash = P2H(pos)
 			tWaypoints[hash] = nil
 			meta:set_string("waypoints", "")
-			minecart.set_marker(pos, "delete")
+			--minecart.set_marker(pos, "delete")
 		end
 	end
 	
@@ -166,7 +171,7 @@ local function get_rail_power(pos, dot)
 	else
 		node = get_node_lvm(pos)
 	end
-	return (carts.railparams[node.name] or {}).acceleration or 0
+	return tRailsPower[node.name] or 0
 end
 
 local function check_speed_limit(dot, pos)
@@ -222,7 +227,6 @@ local function find_next_meta(pos, dot)
 	local cnt = 0
 
 	while cnt <= MAX_NODES do
-		print("find_next_meta", facedir, cnt)
 		npos = vector.add(npos, Dot2Dir[dot])
 		local dot = check_front_up_down(npos, facedir)
 		if M(npos):contains("waypoints") then
@@ -247,44 +251,27 @@ local function find_all_rails_nearby(pos)
 end
 
 -- Recalc the value based on waypoint length and slope
-local function recalc_power(dot, power, pos1, pos2)
+local function recalc_power(dot, num_pow_rails, pos1, pos2)
+	local ratio, power
+	
+	if num_pow_rails == 0 then
+		ratio = 11
+	else
+		local num_norm_rails = vector.distance(pos1, pos2) - num_pow_rails
+		ratio = math.floor(num_norm_rails / num_pow_rails)
+		ratio = minecart.range(ratio, 0, 11)
+	end
+	
 	local y = ((dot - 1) % 3) - 1
-	local dist = vector.distance(pos1, pos2)
-	local offs
-	
 	if y == 1 then
-		--print("recalc_power", power, dist * -SLOPE_ACCELERATION)
-		offs = dist * -SLOPE_ACCELERATION
+		power = 7 - ratio
 	elseif y == -1 then
-		--print("recalc_power", power, dist * SLOPE_ACCELERATION)
-		offs = dist * SLOPE_ACCELERATION
+		power = 15 - ratio
 	else
-		offs = dist * -SLOWDOWN
+		power = 11 - ratio
 	end
 	
-	power = power + offs
-	
-	if power > MAX_SPEED then
-		return MAX_SPEED
-	elseif power < -MAX_SPEED then
-		return -MAX_SPEED
-	else
-		return power
-	end
-end	
-
-local function is_waypoint(dots)
-	if #dots ~= 2 then return true end
-	
-	local facedir1 = math.floor((dots[1] - 1) / 3)
-	local facedir2 = math.floor((dots[2] - 1) / 3)
-	local y1 = ((dots[1] - 1) % 3) - 1
-	local y2 = ((dots[2] - 1) % 3) - 1
-	
-	if facedir1 ~= flip[facedir2] then return true end
-	if y1 ~= y2 * -1 then return true end
-	
-	return false
+	return minecart.range(power, 0, 8)
 end	
 
 local function determine_waypoints(pos)
@@ -300,10 +287,8 @@ local function determine_waypoints(pos)
 		waypoints[facedir] = {dot = dot, pos = npos, power = power, limit = limit}
 		dots[#dots + 1] = dot
 	end
-	--if is_waypoint(dots) then
-		M(pos):set_string("waypoints", minetest.serialize(waypoints))
-		minecart.set_marker(pos, "add")
-	--end
+	M(pos):set_string("waypoints", minetest.serialize(waypoints))
+	--minecart.set_marker(pos, "add")
     return waypoints
 end
 
@@ -341,16 +326,14 @@ local function get_waypoint(pos, facedir, ctrl, uturn)
 	if t[right]   then return t[right]   end
 	if t[left]    then return t[left]    end
 	
-	if uturn and t[back] then return t[back]    end
+	if uturn and t[back] then return t[back] end
 end
 
 local function after_dig_node(pos, oldnode, oldmetadata, digger)
-	print("after_dig_node")
 	delete_waypoints(pos)
 end
 
 local function after_place_node(pos, oldnode, oldmetadata, digger)
-	print("after_place_node")
 	delete_waypoints(pos)
 end
 
@@ -365,6 +348,7 @@ minecart.MAX_SPEED = MAX_SPEED
 minecart.Dot2Dir = Dot2Dir
 minecart.Dir2Dot = Dir2Dot 
 minecart.get_waypoint = get_waypoint
+minecart.delete_waypoint = delete_rail_metadata
 minecart.lRails = lRails
 
 -- used by speed limit signs
@@ -373,7 +357,6 @@ function minecart.delete_waypoints(pos)
 	local pos2 = {x = pos.x + 1, y = pos.y, z = pos.z + 1}
 	local posses = minetest.find_nodes_in_area(pos1, pos2, lRailsExt)
 	for _, pos in ipairs(posses) do
-		print("delete_waypoints", P2S(pos))
 		delete_waypoints(pos)
 	end
 end

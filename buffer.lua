@@ -33,8 +33,7 @@ end
 local function remote_station_name(pos)
 	local route = minecart.get_route(pos)
 	if route and route.dest_pos then
-		local pos2 = S2P(route.dest_pos)
-		return M(pos2):get_string("name")
+		return M(route.dest_pos):get_string("name")
 	end
 	return "none"
 end
@@ -53,12 +52,11 @@ local function on_punch(pos, node, puncher)
 		-- only teleport if the user is not pressing shift
 		if not puncher:get_player_control()['sneak'] then
 			local playername = puncher:get_player_name()
-			local pos = S2P(route.dest_pos)
 
 			local teleport = function()
 				-- Make sure the player object still exists
 				local player = minetest.get_player_by_name(playername)
-				if player and pos then player:set_pos(pos) end
+				if player then player:set_pos(route.dest_pos) end
 			end
 			minetest.after(0.25, teleport)
 		end

@@ -19,20 +19,31 @@ local Dir2Dot = minecart.Dir2Dot
 local get_waypoint = minecart.get_waypoint
 local recording_waypoints = minecart.recording_waypoints
 local recording_junctions = minecart.recording_junctions
+local player_ctrl = minecart.player_ctrl
 local tEntityNames = minecart.tEntityNames
 
-local function stop_cart(self)
+local function stop_cart(self, cart_pos)
 	self.is_running = false
 	self.arrival_time = 0
-	local pos = self.object:get_pos()
 	
 	if self.driver then
 		local player = minetest.get_player_by_name(self.driver)
 		if player then
+			minecart.stop_recording(self, cart_pos)	
 			minecart.manage_attachment(player, self, false)
 		end
 	end
-	minecart.entity_to_node(pos, self)
+	minecart.entity_to_node(cart_pos, self)
+	
+	if not minecart.get_buffer_pos(cart_pos, self.owner) then
+		-- Probably somewhere in the pampas 
+		minecart.delete_waypoint(cart_pos)
+	end
+end
+
+local function get_ctrl(self, pos)
+	-- Use player ctrl or junction data from recorded routes
+	return (self.driver and self.ctrl) or (self.junctions and self.junctions[P2H(pos)]) or {}
 end
 
 local function running(self)
@@ -45,25 +56,35 @@ local function running(self)
 	if self.reenter then -- through monitoring
 		cart_pos = H2P(self.reenter[1])
 		cart_speed = self.reenter[3]
-		self.waypoint = {pos = H2P(self.reenter[2]), power = 0, limit = MAX_SPEED, dot = self.reenter[4]}
+		self.waypoint = {pos = H2P(self.reenter[2]), power = 0, limit = MAX_SPEED * 100, dot = self.reenter[4]}
 		self.reenter = nil
+		print("reenter", P2S(cart_pos), cart_speed)
 	elseif not self.waypoint then
 		-- get waypoint
 		cart_pos = self.object:get_pos()
 		cart_speed = 2
-		self.waypoint = get_waypoint(cart_pos, facedir, {}, true)
+		self.waypoint = get_waypoint(cart_pos, facedir, get_ctrl(self, cart_pos), true)
+		if self.no_normal_start then
+			-- Probably somewhere in the pampas
+			minecart.delete_waypoint(cart_pos)
+			self.no_normal_start = nil
+		end
 	else
 		-- next waypoint
 		cart_pos = vector.new(self.waypoint.pos)
 		local vel = self.object:get_velocity()
 		cart_speed = math.sqrt((vel.x+vel.z)^2 + vel.y^2)
-		local ctrl = self.junctions and self.junctions[P2H(self.waypoint.pos)] or {}
-		self.waypoint = get_waypoint(self.waypoint.pos, facedir, ctrl, cart_speed < 0.1)
+		self.waypoint = get_waypoint(cart_pos, facedir, get_ctrl(self, cart_pos), cart_speed < 0.1)
 	end
 
 	if not self.waypoint then
-		stop_cart(self)
+		stop_cart(self, cart_pos)
 		return
+	end
+	
+	-- Check if direction changed
+	if facedir ~= math.floor((self.waypoint.dot - 1) / 3) then
+		self.ctrl = nil
 	end
 	
 	-- Calc speed
@@ -103,11 +124,14 @@ local function running(self)
 	local dist = vector.distance(cart_pos, self.waypoint.pos)
 	local vel = vector.multiply(new_dir, new_speed / (new_dir.y ~= 0 and 1.41 or 1))
 	self.arrival_time = self.timebase + (dist / new_speed)
-	self.speed = new_speed  -- needed for recording
-	self.dot = Dir2Dot[new_dir]  -- needed for recording
+	-- needed for recording
+	self.speed = new_speed  
+	self.num_sections = (self.num_sections or 0) + 1
 	
+	-- Got stuck somewhere
 	if new_speed < 0.1 or dist < 0.5 then
-		stop_cart(self)
+		print("Got stuck somewhere", new_speed, dist)
+		stop_cart(self, cart_pos)
 		return
 	end
 		
@@ -149,12 +173,16 @@ local function on_step(self, dtime)
 		end		
 	end
 
-	if self.is_recording then
-		if self.rec_time <= self.timebase then
-			recording_waypoints(self)
-			self.rec_time = self.rec_time + 2.0
+	if self.driver then
+		if self.is_recording then
+			if self.rec_time <= self.timebase then
+				recording_waypoints(self)
+				self.rec_time = self.rec_time + 2.0
+			end
+			recording_junctions(self)
+		else
+			player_ctrl(self)
 		end
-		recording_junctions(self)
 	end
 end
 
@@ -170,6 +198,7 @@ local function on_entitycard_punch(self, puncher, time_from_last_punch, tool_cap
 			if self.driver then
 				-- remove cart as driver
 				local pos = self.object:get_pos()
+				minecart.stop_recording(self, pos)	
 				minecart.remove_entity(self, pos, puncher)
 				minecart.manage_attachment(puncher, self, false)
 			else
@@ -177,6 +206,11 @@ local function on_entitycard_punch(self, puncher, time_from_last_punch, tool_cap
 				local pos = self.object:get_pos()
 				minecart.remove_entity(self, pos, puncher)
 			end
+		elseif not self.is_running then
+			-- start the cart
+			local pos = self.object:get_pos()
+			minecart.start_entitycart(self, pos)
+			minecart.start_recording(self, pos) 
 		end
 	end
 end
@@ -188,10 +222,12 @@ local function on_entitycard_rightclick(self, clicker)
 		if self.driver then
 			-- get off
 			local pos = self.object:get_pos()
-			minecart.entity_to_node(pos, self)
+			minecart.stop_recording(self, pos)	
 			minecart.manage_attachment(clicker, self, false)
 		else
 			-- get on
+			local pos = self.object:get_pos()
+			minecart.stop_recording(self, pos)	
 			minecart.manage_attachment(clicker, self, true)
 		end
 	end

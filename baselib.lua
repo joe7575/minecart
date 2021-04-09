@@ -14,6 +14,8 @@
 local M = minetest.get_meta
 local P2S = function(pos) if pos then return minetest.pos_to_string(pos) end end
 local S2P = minetest.string_to_pos
+local P2H = minetest.hash_node_position
+local H2P = minetest.get_position_from_hash
 
 local param2_to_dir = {[0]=
 	{x=0,  y=0,  z=1},
@@ -202,8 +204,7 @@ function minecart.add_nodecart(pos, node_name, param2, cargo, owner, userID)
 			meta:set_string("removed_rail", rail)
 			meta:set_string("owner", owner)
 			meta:set_int("userID", userID)
-			meta:set_string("infotext", 
-					minetest.get_color_escape_sequence("#FFFF00") .. owner .. ": " .. userID)
+			meta:set_string("infotext", owner .. ": " .. userID)
 			
 			if cargo and ndef.set_cargo then
 				ndef.set_cargo(pos2, cargo)
@@ -227,13 +228,28 @@ function minecart.add_entitycart(pos, node_name, entity_name, vel, cargo, owner,
 		entity.owner = owner
 		entity.node_name = node_name
 		entity.userID = userID
+		entity.objID = objID
 		entity.cargo = cargo
 		obj:set_nametag_attributes({color = "#ffff00", text = owner..": "..userID})
 		obj:set_velocity(vel)
-		
-		minecart.start_monitoring(owner, userID, objID)
-		return objID, obj
+		return obj
 	end
+end
+
+function minecart.start_entitycart(self, pos)
+	local route = {}
+	
+	self.is_running = true
+	self.arrival_time = 0
+	self.start_pos = minecart.get_buffer_pos(pos, self.owner)
+	if self.start_pos then
+		-- Read buffer route for the junction info
+		route = minecart.get_route(self.start_pos) or {}
+		self.junctions = route and route.junctions
+	end
+	-- If set the start waypoint will be deleted
+	self.no_normal_start = self.start_pos == nil
+	minecart.start_monitoring(self.owner, self.userID, pos, self.objID, route.checkpoints)
 end
 
 function minecart.remove_nodecart(pos)
@@ -253,10 +269,10 @@ end
 function minecart.node_to_entity(pos, node_name, entity_name)
 	-- Remove node
 	local cargo, owner, userID = minecart.remove_nodecart(pos)
-	local objID, obj = minecart.add_entitycart(pos, node_name, 
-			entity_name, {x = 0, y = 0, z = 0}, cargo, owner, userID)
-	if objID then
-		return objID, obj
+	local obj = minecart.add_entitycart(pos, node_name, entity_name,
+			{x = 0, y = 0, z = 0}, cargo, owner, userID)
+	if obj then
+		return obj
 	else
 		print("Entity has no ID")
 	end
@@ -272,10 +288,10 @@ function minecart.entity_to_node(pos, entity)
 	local rot = entity.object:get_rotation()
 	local dir = minetest.yaw_to_dir(rot.y)
 	local facedir = minetest.dir_to_facedir(dir)
+	minecart.stop_recording(entity, pos)
 	entity.object:remove()
 	minecart.add_nodecart(pos, entity.node_name, facedir, entity.cargo, entity.owner, entity.userID)
-	minecart.stop_monitoring(entity.owner, entity.userID)
-	minecart.stop_recording(entity, pos)
+	minecart.stop_monitoring(entity.owner, entity.userID, pos)
 end
 
 function minecart.add_node_to_player_inventory(pos, player, node_name)
@@ -299,16 +315,8 @@ function minecart.remove_entity(self, pos, player)
 		self.sound_handle = nil
 	end
 	minecart.add_node_to_player_inventory(pos, player, self.node_name or "minecart:cart")
-	minecart.stop_monitoring(self.owner, self.userID)
+	minecart.stop_monitoring(self.owner, self.userID, pos)
 	minecart.stop_recording(self, pos)	
 	minecart.monitoring_remove_cart(self.owner, self.userID)
 	self.object:remove()
-end
-
-function minecart.back_to_start(self)
-	local cart = minecart.get_cart_monitoring_data(self.owner, self.userID)
-	if cart then
-		minecart.add_nodecart(cart.start_pos, cart.node_name, 0, cart.cargo, self.owner, self.userID)
-		minecart.stop_monitoring(self.owner, self.userID)
-	end
 end

@@ -32,12 +32,10 @@ function minecart.start_nodecart(pos, node_name, puncher)
 	if minecart.is_owner(puncher, owner) and minetest.get_player_by_name(owner) and
 			userID ~= 0 then
 		local entity_name = minecart.tNodeNames[node_name]
-		local objID, obj = minecart.node_to_entity(pos, node_name, entity_name)
-		if objID then
+		local obj = minecart.node_to_entity(pos, node_name, entity_name)
+		if obj then
 			local entity = obj:get_luaentity()
-			entity.is_running = true
-			entity.arrival_time = 0
-			minecart.start_monitoring(owner, userID, objID)
+			 minecart.start_entitycart(entity, pos)
 		end
 	end
 end
@@ -103,16 +101,12 @@ end
 
 minetest.register_on_player_receive_fields(function(player, formname, fields)
     if formname == "minecart:userID_node" then
-		print(dump(fields))
 		if fields.exit == "Save" or fields.key_enter == "true" then
-			print(1)
 			local cart_pos = S2P(player:get_meta():get_string("cart_pos"))
 			local owner = M(cart_pos):get_string("owner")
 			if minecart.is_owner(player, owner) then
-			print(2)
 				local userID = tonumber(fields.userID) or 0
 				if minecart.userID_available(owner, userID) then
-			print(3)
 					M(cart_pos):set_int("userID", userID)
 					M(cart_pos):set_string("infotext", 
 							minetest.get_color_escape_sequence("#FFFF00") ..
