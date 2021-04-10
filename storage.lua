@@ -24,23 +24,53 @@ local storage = minetest.get_mod_storage()
 -------------------------------------------------------------------------------
 minecart.CartsOnRail = {}
 
---minetest.register_on_mods_loaded(function()
---	local version = storage:get_int("version")
---	if version < 2 then
---		minecart.CartsOnRail = convert_to_v2()
---		storage:set_int("version", 2)
---	else
---		minecart.CartsOnRail = minetest.deserialize(storage:get_string("CartsOnRail")) or {}
---	end
---end)
 
---minetest.register_on_shutdown(function()
---	storage:set_string("CartsOnRail", minetest.serialize(minecart.CartsOnRail))
---end)
+minetest.register_on_mods_loaded(function()
+	local version = storage:get_int("version")
+	if version < 2 then
+		--minecart.CartsOnRail = {} -- convert_to_v2()
+		storage:set_int("version", 2)
+	else
+		local t = minetest.deserialize(storage:get_string("CartsOnRail")) or {}
+		for owner, carts in pairs(t) do
+			minecart.CartsOnRail[owner] = {}
+			for userID, cart in pairs(carts) do
+				print("reload cart", owner, userID, cart.objID)
+				minecart.CartsOnRail[owner][userID] = cart
+				-- mark all entity carts as zombified
+				if cart.objID and cart.objID ~= 0 then
+					cart.objID = -1
+					minecart.push(1, cart)
+				end
+			end
+		end
+	end
+end)
 
---function minecart.store_carts()
---	storage:set_string("CartsOnRail", minetest.serialize(minecart.CartsOnRail))
---end
+minetest.after(10, function()
+	for owner, carts in pairs(minecart.CartsOnRail) do
+		for userID, cart in pairs(carts) do
+			-- Remove node carts that are not available anymore
+			if cart.objID == 0 or not cart.objID then
+				local node = minecart.get_node_lvm(cart.pos)
+				if not minecart.tNodeNames[node.name] then
+					-- Mark as "to be deleted"
+					print("Node cart deleted", owner, userID)
+					minecart.CartsOnRail[owner][userID] = nil
+				end
+			end
+		end
+	end
+end)
+
+minetest.register_on_shutdown(function()
+	storage:set_string("CartsOnRail", minetest.serialize(minecart.CartsOnRail))
+	print("minecart shutdown finished!!!")
+end)
+
+function minecart.store_carts()
+	storage:set_string("CartsOnRail", minetest.serialize(minecart.CartsOnRail))
+end
 
 -------------------------------------------------------------------------------
 -- Store routes (in buffers)

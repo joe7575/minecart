@@ -58,8 +58,6 @@ local tSigns = {
 	["minecart:speed8"] = 8,
 }
 
-local lSigns = {"minecart:speed1", "minecart:speed2", "minecart:speed4", "minecart:speed8"}
-
 -- Real rails from the mod carts
 local lRails = {"carts:rail", "carts:powerrail", "carts:brakerail"}
 -- Rails plus node carts used to find waypoints, , added via add_raillike_nodes
@@ -176,10 +174,18 @@ end
 
 local function check_speed_limit(dot, pos)
 	local facedir = math.floor((dot - 1) / 3)
-	facedir = (facedir + 1) % 4 -- turn right
-	local npos = vector.add(pos, Facedir2Dir[facedir])
+	local facedir2 = (facedir + 1) % 4 -- turn right
+	local npos = vector.add(pos, Facedir2Dir[facedir2])
 	local node = get_node_lvm(npos)
-	return tSigns[node.name]
+	if tSigns[node.name] then
+		return node.param2 == facedir and tSigns[node.name]
+	end
+	facedir2 = (facedir2 + 2) % 4 -- turn left
+	npos = vector.add(pos, Facedir2Dir[facedir2])
+	node = get_node_lvm(npos)
+	if tSigns[node.name] then
+		return node.param2 == facedir and tSigns[node.name]
+	end
 end
 
 local function find_next_waypoint(pos, dot)

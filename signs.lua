@@ -75,11 +75,36 @@ register_sign({
 	image = "minecart_sign8.png",
 })
 
---minetest.register_craft({
---	output = "signs_bot:sign_right 6",
---	recipe = {
---		{"group:wood", "default:stick", "group:wood"},
---		{"dye:yellow", "default:stick", "dye:black"},
---		{"", "", ""}
---	}
---})
+minetest.register_craft({
+	output = "minecart:speed8 8",
+	recipe = {
+		{"default:tin_ingot", "dye:red", "default:tin_ingot"},
+		{"", "default:steel_ingot", ""},
+		{"", "default:steel_ingot", ""}
+	}
+})
+
+minetest.register_craft({
+	type = "shapeless",
+	output = "minecart:speed4",
+	recipe = {"minecart:speed8"}
+})
+
+minetest.register_craft({
+	type = "shapeless",
+	output = "minecart:speed2",
+	recipe = {"minecart:speed4"}
+})
+
+minetest.register_craft({
+	type = "shapeless",
+	output = "minecart:speed1",
+	recipe = {"minecart:speed2"}
+})
+
+minetest.register_craft({
+	type = "shapeless",
+	output = "minecart:speed8",
+	recipe = {"minecart:speed1"}
+})
+

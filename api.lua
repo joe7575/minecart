@@ -21,7 +21,7 @@ function minecart.is_cart_available(pos, param2, radius)
 	end
 	-- The entity check is needed for a cart with driver
 	local entity = minecart.get_entitycart_nearby(pos, param2, radius)
-	if entity then
+	if entity and entity.driver then
 		return true
 	end
 end	
@@ -34,7 +34,7 @@ function minecart.punch_cart(pos, param2, radius, punch_dir)
 	end
 	-- The entity check is needed for a cart with driver
 	local entity = minecart.get_entitycart_nearby(pos, param2, radius)
-	if entity then
+	if entity and entity.driver then
 		minecart.push_entitycart(entity, punch_dir)
 		return true
 	end

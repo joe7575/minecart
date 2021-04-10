@@ -249,7 +249,10 @@ function minecart.start_entitycart(self, pos)
 	end
 	-- If set the start waypoint will be deleted
 	self.no_normal_start = self.start_pos == nil
-	minecart.start_monitoring(self.owner, self.userID, pos, self.objID, route.checkpoints)
+	if self.driver == nil then
+		minecart.start_monitoring(self.owner, self.userID, pos, self.objID, 
+				route.checkpoints, route.junctions)
+	end
 end
 
 function minecart.remove_nodecart(pos)

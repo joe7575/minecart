@@ -61,7 +61,7 @@ local function running(self)
 		print("reenter", P2S(cart_pos), cart_speed)
 	elseif not self.waypoint then
 		-- get waypoint
-		cart_pos = self.object:get_pos()
+		cart_pos = vector.round(self.object:get_pos())
 		cart_speed = 2
 		self.waypoint = get_waypoint(cart_pos, facedir, get_ctrl(self, cart_pos), true)
 		if self.no_normal_start then
@@ -197,18 +197,20 @@ local function on_entitycard_punch(self, puncher, time_from_last_punch, tool_cap
 			-- Dig cart
 			if self.driver then
 				-- remove cart as driver
-				local pos = self.object:get_pos()
+				local pos = vector.round(self.object:get_pos())
 				minecart.stop_recording(self, pos)	
+				minecart.monitoring_remove_cart(self.owner, self.userID)
 				minecart.remove_entity(self, pos, puncher)
 				minecart.manage_attachment(puncher, self, false)
 			else
 				-- remove cart from outside
-				local pos = self.object:get_pos()
+				local pos = vector.round(self.object:get_pos())
+				minecart.monitoring_remove_cart(self.owner, self.userID)				
 				minecart.remove_entity(self, pos, puncher)
 			end
 		elseif not self.is_running then
 			-- start the cart
-			local pos = self.object:get_pos()
+			local pos = vector.round(self.object:get_pos())
 			minecart.start_entitycart(self, pos)
 			minecart.start_recording(self, pos) 
 		end
@@ -221,12 +223,12 @@ local function on_entitycard_rightclick(self, clicker)
 		-- Get on / off
 		if self.driver then
 			-- get off
-			local pos = self.object:get_pos()
+			local pos = vector.round(self.object:get_pos())
 			minecart.stop_recording(self, pos)	
 			minecart.manage_attachment(clicker, self, false)
 		else
 			-- get on
-			local pos = self.object:get_pos()
+			local pos = vector.round(self.object:get_pos())
 			minecart.stop_recording(self, pos)	
 			minecart.manage_attachment(clicker, self, true)
 		end
@@ -254,7 +256,6 @@ end
 
 function minecart.push_entitycart(self, punch_dir)
 	print("push_entitycart")
-	local pos = self.object:get_pos()
 	local vel = self.object:get_velocity()
 	punch_dir.y = 0
 	local yaw = minetest.dir_to_yaw(punch_dir)

@@ -23,8 +23,8 @@ minecart.CLIP = minetest.features.use_texture_alpha_string_modes and "clip" or t
 
 minecart.S = minetest.get_translator("minecart")
 local MP = minetest.get_modpath("minecart")
-dofile(MP .. "/storage.lua")
 dofile(MP .. "/baselib.lua")
+dofile(MP .. "/storage.lua")
 dofile(MP .. "/rails.lua")
 dofile(MP .. "/monitoring.lua")
 dofile(MP .. "/recording.lua")

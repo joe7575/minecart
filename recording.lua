@@ -87,7 +87,7 @@ function minecart.stop_recording(self, pos)
 	if self.driver and self.is_recording then
 		local dest_pos = minecart.get_buffer_pos(pos, self.driver)
 		local player = minetest.get_player_by_name(self.driver)
-		if dest_pos and player then
+		if dest_pos and player and #self.checkpoints > 2 then
 			if self.start_pos then
 				local route = {
 					dest_pos = dest_pos,
@@ -106,8 +106,7 @@ function minecart.stop_recording(self, pos)
 end
 
 function minecart.recording_waypoints(self)	
-	local pos = self.object:get_pos()
-	pos = vector.round(pos)
+	local pos = vector.round(self.object:get_pos())
 	self.checkpoints[#self.checkpoints+1] = {
 		-- cart_pos, new_pos, speed, dot
 		P2H(pos), 
