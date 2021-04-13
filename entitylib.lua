@@ -51,18 +51,22 @@ local function running(self)
 	local dir = minetest.yaw_to_dir(rot.y)
 	dir.y = math.floor((rot.x / (math.pi/4)) + 0.5)
 	local facedir = minetest.dir_to_facedir(dir)
-	local cart_pos, cart_speed, new_speed
+	local cart_pos, wayp_pos, cart_speed, new_speed, is_junction
 	
 	if self.reenter then -- through monitoring
 		cart_pos = H2P(self.reenter[1])
+		wayp_pos = cart_pos
 		cart_speed = self.reenter[3]
+		is_junction = false
 		self.waypoint = {pos = H2P(self.reenter[2]), power = 0, limit = MAX_SPEED * 100, dot = self.reenter[4]}
 		self.reenter = nil
-		print("reenter", P2S(cart_pos), cart_speed)
+		--print("reenter", P2S(cart_pos), cart_speed)
 	elseif not self.waypoint then
 		-- get waypoint
 		cart_pos = vector.round(self.object:get_pos())
+		wayp_pos = cart_pos
 		cart_speed = 2
+		is_junction = false
 		self.waypoint = get_waypoint(cart_pos, facedir, get_ctrl(self, cart_pos), true)
 		if self.no_normal_start then
 			-- Probably somewhere in the pampas
@@ -71,19 +75,20 @@ local function running(self)
 		end
 	else
 		-- next waypoint
-		cart_pos = vector.new(self.waypoint.pos)
+		cart_pos = vector.new(self.waypoint.cart_pos or self.waypoint.pos)
+		--print("next waypoint", P2S(cart_pos))
+		wayp_pos = self.waypoint.pos
 		local vel = self.object:get_velocity()
 		cart_speed = math.sqrt((vel.x+vel.z)^2 + vel.y^2)
-		self.waypoint = get_waypoint(cart_pos, facedir, get_ctrl(self, cart_pos), cart_speed < 0.1)
+		self.waypoint, is_junction = get_waypoint(wayp_pos, facedir, get_ctrl(self, wayp_pos), cart_speed < 0.1)
 	end
 
 	if not self.waypoint then
-		stop_cart(self, cart_pos)
+		stop_cart(self, wayp_pos)
 		return
 	end
 	
-	-- Check if direction changed
-	if facedir ~= math.floor((self.waypoint.dot - 1) / 3) then
+	if is_junction then
 		self.ctrl = nil
 	end
 	
@@ -110,18 +115,15 @@ local function running(self)
 	end
 	
 	-- Slope corrections
+	--print("Slope corrections", P2S(new_dir), P2S(cart_pos))
 	if new_dir.y ~= 0 then
-		cart_pos = vector.add(cart_pos, {x = new_dir.x / 2, y = 0.2, z = new_dir.z / 2})
-	elseif dir.y == 1 then
-		cart_pos = vector.subtract(cart_pos, {x = dir.x / 2, y = 0, z = dir.z / 2})
-	elseif dir.y == -1 then
-		cart_pos = vector.add(cart_pos, {x = dir.x / 2, y = 0, z = dir.z / 2})
+		cart_pos.y = cart_pos.y + 0.2
 	end	
 	
 	-- Calc velocity, rotation and arrival_time
 	local yaw = minetest.dir_to_yaw(new_dir)
 	local pitch = new_dir.y * math.pi/4
-	local dist = vector.distance(cart_pos, self.waypoint.pos)
+	local dist = vector.distance(cart_pos, self.waypoint.cart_pos or self.waypoint.pos)
 	local vel = vector.multiply(new_dir, new_speed / (new_dir.y ~= 0 and 1.41 or 1))
 	self.arrival_time = self.timebase + (dist / new_speed)
 	-- needed for recording
@@ -129,9 +131,9 @@ local function running(self)
 	self.num_sections = (self.num_sections or 0) + 1
 	
 	-- Got stuck somewhere
-	if new_speed < 0.1 or dist < 0.5 then
+	if new_speed < 0.1 or dist < 0.2 then
 		print("Got stuck somewhere", new_speed, dist)
-		stop_cart(self, cart_pos)
+		stop_cart(self, wayp_pos)
 		return
 	end
 		
@@ -194,23 +196,32 @@ end
 local function on_entitycard_punch(self, puncher, time_from_last_punch, tool_capabilities, dir)
 	if minecart.is_owner(puncher, self.owner) then
 		if puncher:get_player_control().sneak then
-			-- Dig cart
-			if self.driver then
-				-- remove cart as driver
+			if not self.only_dig_if_empty or not next(self.cargo) then
+				-- drop items
 				local pos = vector.round(self.object:get_pos())
-				minecart.stop_recording(self, pos)	
-				minecart.monitoring_remove_cart(self.owner, self.userID)
-				minecart.remove_entity(self, pos, puncher)
-				minecart.manage_attachment(puncher, self, false)
-			else
-				-- remove cart from outside
-				local pos = vector.round(self.object:get_pos())
-				minecart.monitoring_remove_cart(self.owner, self.userID)				
-				minecart.remove_entity(self, pos, puncher)
+				for _,item in ipairs(self.cargo or {}) do
+					minetest.add_item(pos, ItemStack(item))
+				end
+				-- Dig cart
+				if self.driver then
+					-- remove cart as driver
+					minecart.stop_recording(self, pos)	
+					minecart.monitoring_remove_cart(self.owner, self.userID)
+					minecart.remove_entity(self, pos, puncher)
+					minecart.manage_attachment(puncher, self, false)
+				else
+					-- remove cart from outside
+					minecart.monitoring_remove_cart(self.owner, self.userID)				
+					minecart.remove_entity(self, pos, puncher)
+				end
 			end
 		elseif not self.is_running then
 			-- start the cart
 			local pos = vector.round(self.object:get_pos())
+			if puncher then
+				local yaw = puncher:get_look_horizontal()
+				self.object:set_rotation({x = 0, y = yaw, z = 0})
+			end
 			minecart.start_entitycart(self, pos)
 			minecart.start_recording(self, pos) 
 		end
@@ -219,7 +230,7 @@ end
 	
 -- Player get on / off
 local function on_entitycard_rightclick(self, clicker)
-	if clicker and clicker:is_player() then
+	if clicker and clicker:is_player() and self.driver_allowed then
 		-- Get on / off
 		if self.driver then
 			-- get off
@@ -255,7 +266,7 @@ function minecart.get_entitycart_nearby(pos, param2, radius)
 end
 
 function minecart.push_entitycart(self, punch_dir)
-	print("push_entitycart")
+	--print("push_entitycart")
 	local vel = self.object:get_velocity()
 	punch_dir.y = 0
 	local yaw = minetest.dir_to_yaw(punch_dir)
@@ -264,7 +275,7 @@ function minecart.push_entitycart(self, punch_dir)
 	self.arrival_time = 0
 end
 
-function minecart.register_cart_entity(entity_name, node_name, entity_def)
+function minecart.register_cart_entity(entity_name, node_name, cart_type, entity_def)
 	entity_def.entity_name = entity_name
 	entity_def.node_name = node_name
 	entity_def.on_activate = on_entitycard_activate
@@ -279,6 +290,6 @@ function minecart.register_cart_entity(entity_name, node_name, entity_def)
 	
 	minetest.register_entity(entity_name, entity_def)
 	-- register node for punching
-	minecart.register_cart_names(node_name, entity_name)
+	minecart.register_cart_names(node_name, entity_name, cart_type)
 end
 

@@ -94,20 +94,11 @@ for dot = 1,12 do
 end
 
 
-local function check_front_up_down(pos, facedir, test_for_slope)
+local function check_front_up_down(pos, facedir)
 	local npos
 	
     npos = vector.add(pos, Facedir2Dir[facedir]) 
     if tRailsExt[get_node_lvm(npos).name] then
-		-- We also have to check the next node to find the next upgoing rail.
-		if test_for_slope then
-			npos = vector.add(npos, Facedir2Dir[facedir])
-			npos.y = npos.y + 1
-			if tRailsExt[get_node_lvm(npos).name] then
-				--print("check_front_up_down: 2up")
-				return facedir * 3 + 3 -- up
-			end
-		end
 		--print("check_front_up_down: front")
 		return facedir * 3 + 2 -- front
     end
@@ -153,7 +144,7 @@ local function delete_rail_metadata(pos, nearby)
 	if nearby then
 		local pos1 = {x = pos.x - 1, y = pos.y, z = pos.z - 1}
 		local pos2 = {x = pos.x + 1, y = pos.y, z = pos.z + 1}
-		for _, npos in ipairs(minetest.find_nodes_in_area_under_air(pos1, pos2, lRailsExt)) do
+		for _, npos in ipairs(minetest.find_nodes_in_area(pos1, pos2, lRailsExt)) do
 			delete(npos)
 		end
 	else
@@ -188,11 +179,27 @@ local function check_speed_limit(dot, pos)
 	end
 end
 
+local function slope_detection(dot1, dot2)
+	local y1 = ((dot1 - 1) % 3) - 1
+	local y2 = ((dot2 - 1) % 3) - 1
+	local fd1 = math.floor((dot1 - 1) / 3)
+	local fd2 = math.floor((dot2 - 1) / 3)
+	
+	if fd1 == fd2 then  -- no dir change
+		if y1 ~= y2 then  -- slope kink
+			-- return the direction
+			return (y1 == 1 or y2 == 1) and 1 or -1
+		elseif dot1 == dot1 then  -- speed sign on a slope
+			-- return the direction
+			return y1 == 1 and 1 or -1
+		end
+	end
+end	
+
 local function find_next_waypoint(pos, dot)
 	--print("find_next_waypoint", P2S(pos), dot)
 	local npos = vector.new(pos)
 	local facedir = math.floor((dot - 1) / 3)
-	local y = ((dot - 1) % 3) - 1
 	local power = 0
 	local cnt = 0
 	
@@ -207,18 +214,11 @@ local function find_next_waypoint(pos, dot)
 			return npos, power
 		elseif #dots > 1 then -- junction
 			return npos, power
-		elseif dots[1] ~= dot then -- curve
-			-- If the direction changes to upwards,
-			-- the destination pos must be one block further to hit the next rail.
-			if y == 1 then
-				local dir = Dot2Dir[dot]
-				npos = vector.add(npos, Facedir2Dir[facedir])
-				return npos, power
-			end
-			return npos, power
+		elseif dots[1] ~= dot then -- curve or slope
+			return npos, power, slope_detection(dot, dots[1])
 		elseif speed then -- sign detected
 			--print("check_speed_limit", speed)
-			return npos, power
+			return npos, power, slope_detection(dot, dots[1])
 		end
 		cnt = cnt + 1
 	end
@@ -285,12 +285,12 @@ local function determine_waypoints(pos)
     local waypoints = {}
 	local dots = {}
 	for _,dot in ipairs(find_all_rails_nearby(pos, 0)) do
-		local npos, power = find_next_waypoint(pos, dot)
+		local npos, power, slope = find_next_waypoint(pos, dot)
 		power = math.floor(recalc_power(dot, power, pos, npos) * 100)
 		-- check for speed limit
 		local limit = (check_speed_limit(dot, pos) or MAX_SPEED) * 100
 		local facedir = math.floor((dot - 1) / 3)
-		waypoints[facedir] = {dot = dot, pos = npos, power = power, limit = limit}
+		waypoints[facedir] = {dot = dot, pos = npos, power = power, limit = limit, slope = slope}
 		dots[#dots + 1] = dot
 	end
 	M(pos):set_string("waypoints", minetest.serialize(waypoints))
@@ -316,6 +316,28 @@ local function get_metadata(pos)
     end
 end
 
+-- Cart position correction, if it is a change in y direction (slope kink)
+local function slope_handling(wp)
+	if wp.slope then  -- slope kink
+		local dir = Dot2Dir[wp.dot]
+		local pos = wp.pos
+		
+		if wp.slope == 1 then	-- up
+			wp.cart_pos = {
+				x = pos.x - dir.x / 2,
+				y = pos.y,
+				z = pos.z - dir.z / 2}
+		else  -- down
+			wp.cart_pos = {
+				x = pos.x + dir.x / 2,
+				y = pos.y,
+				z = pos.z + dir.z / 2}
+		end
+	end
+	return wp
+end
+				
+-- Return the new waypoint and a bool "was junction"
 local function get_waypoint(pos, facedir, ctrl, uturn)
     local hash = P2H(pos)
 	tWaypoints[hash] = tWaypoints[hash] or get_metadata(pos) or determine_waypoints(pos)
@@ -325,14 +347,14 @@ local function get_waypoint(pos, facedir, ctrl, uturn)
 	local right = (facedir + 1) % 4
 	local back  = (facedir + 2) % 4
 	
-	if ctrl.right and t[right] then return t[right] end
-	if ctrl.left  and t[left]  then return t[left]  end
+	if ctrl.right and t[right] then return t[right], t[facedir] ~= nil or t[left] ~= nil end
+	if ctrl.left  and t[left]  then return t[left] , t[facedir] ~= nil or t[right] ~= nil end
 	
-	if t[facedir] then return t[facedir] end
-	if t[right]   then return t[right]   end
-	if t[left]    then return t[left]    end
+	if t[facedir] then return slope_handling(t[facedir]), false end
+	if t[right]   then return slope_handling(t[right]),  false end
+	if t[left]    then return slope_handling(t[left]),   false end
 	
-	if uturn and t[back] then return t[back] end
+	if uturn and t[back] then return t[back], false end
 end
 
 local function after_dig_node(pos, oldnode, oldmetadata, digger)
@@ -354,7 +376,7 @@ minecart.MAX_SPEED = MAX_SPEED
 minecart.Dot2Dir = Dot2Dir
 minecart.Dir2Dot = Dir2Dot 
 minecart.get_waypoint = get_waypoint
-minecart.delete_waypoint = delete_rail_metadata
+minecart.delete_waypoint = delete_rail_metadata -- used by carts
 minecart.lRails = lRails
 
 -- used by speed limit signs
@@ -374,6 +396,13 @@ end
 function minecart.add_raillike_nodes(name)
 	tRailsExt[name] = true
 	lRailsExt[#lRailsExt + 1] = name
+end
+
+-- For debugging purposes
+function minecart.get_waypoints(pos)
+    local hash = P2H(pos)
+	tWaypoints[hash] = tWaypoints[hash] or get_metadata(pos) or determine_waypoints(pos)
+	return tWaypoints[hash]
 end
 
 minetest.register_lbm({

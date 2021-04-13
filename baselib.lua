@@ -30,6 +30,7 @@ local param2_to_dir = {[0]=
 minecart.tNodeNames = {} -- [<cart_node_name>] =  <cart_entity_name>
 minecart.tEntityNames = {} -- [<cart_entity_name>] =  true
 minecart.lCartNodeNames = {} -- {<cart_node_name>, <cart_node_name>, ...}
+minecart.tCartTypes = {}
 
 function minecart.param2_to_dir(param2)
 	return param2_to_dir[param2 % 6]
@@ -53,6 +54,33 @@ function minecart.get_node_lvm(pos)
 		}
 	end
 	return {name="ignore", param2=0}
+end
+
+function minecart.find_node_near_lvm(pos, radius, items)
+	local npos = minetest.find_node_near(pos, radius, items)
+	if npos then
+		return npos
+	end
+	local tItems = {}
+	for _,v in ipairs(items) do
+		tItems[v] = true
+	end
+	local pos1 = {x = pos.x - radius, y = pos.y - radius, z = pos.z - radius}
+	local pos2 = {x = pos.x + radius, y = pos.y + radius, z = pos.z + radius}
+	local vm = minetest.get_voxel_manip()
+	local MinEdge, MaxEdge = vm:read_from_map(pos1, pos2)
+	local data = vm:get_data()
+	local area = VoxelArea:new({MinEdge = MinEdge, MaxEdge = MaxEdge})
+	for x = pos1.x, pos2.x do
+		for y = pos1.y, pos2.y do
+			for z = pos1.z, pos2.z do
+				local idx = area:indexp({x = x, y = y, z = z})
+				if minetest.get_name_from_content_id(data[idx]) then
+					return {x = x, y = y, z = z}
+				end
+			end
+		end
+	end
 end
 
 -- Marker entities for debugging purposes
@@ -128,7 +156,7 @@ function minecart.is_owner(player, owner)
 end
 
 function minecart.get_buffer_pos(pos, player_name)
-	local pos1 = minetest.find_node_near(pos, 1, {"minecart:buffer"})
+	local pos1 = minecart.find_node_near_lvm(pos, 1, {"minecart:buffer"})
 	if pos1 then
 		local meta = minetest.get_meta(pos1)
 		if player_name == nil or player_name == meta:get_string("owner") then
@@ -138,7 +166,7 @@ function minecart.get_buffer_pos(pos, player_name)
 end
 
 function minecart.get_buffer_name(pos)
-	local pos1 = minetest.find_node_near(pos, 1, {"minecart:buffer"})
+	local pos1 = minecart.find_node_near_lvm(pos, 1, {"minecart:buffer"})
 	if pos1 then
 		local name = M(pos1):get_string("name")
 		if name ~= "" then
@@ -174,11 +202,12 @@ function minecart.manage_attachment(player, entity, get_on)
 	end
 end
 
-function minecart.register_cart_names(node_name, entity_name)
+function minecart.register_cart_names(node_name, entity_name, cart_type)
 	minecart.tNodeNames[node_name] = entity_name
 	minecart.tEntityNames[entity_name] = true
 	minecart.lCartNodeNames[#minecart.lCartNodeNames+1] = node_name
 	minecart.add_raillike_nodes(node_name)
+	minecart.tCartTypes[node_name] = cart_type
 end
 
 function minecart.add_nodecart(pos, node_name, param2, cargo, owner, userID)
@@ -212,6 +241,7 @@ function minecart.add_nodecart(pos, node_name, param2, cargo, owner, userID)
 			if ndef.after_place_node then
 				ndef.after_place_node(pos2)
 			end
+			return pos2
 		else
 			minetest.add_item(pos, ItemStack({name = node_name}))
 		end
@@ -251,7 +281,7 @@ function minecart.start_entitycart(self, pos)
 	self.no_normal_start = self.start_pos == nil
 	if self.driver == nil then
 		minecart.start_monitoring(self.owner, self.userID, pos, self.objID, 
-				route.checkpoints, route.junctions)
+				route.checkpoints, route.junctions, self.cargo or {})
 	end
 end
 
@@ -264,6 +294,7 @@ function minecart.remove_nodecart(pos)
 	local userID = meta:get_int("userID")
 	local owner = meta:get_string("owner")
 	meta:set_string("infotext", "")
+	meta:set_string("formspec", "")
 	local cargo = ndef.get_cargo and ndef.get_cargo(pos) or {}
 	minetest.swap_node(pos, {name = rail})
 	return cargo, owner, userID

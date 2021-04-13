@@ -35,6 +35,10 @@ function minecart.start_nodecart(pos, node_name, puncher)
 		local obj = minecart.node_to_entity(pos, node_name, entity_name)
 		if obj then
 			local entity = obj:get_luaentity()
+			if puncher then
+				local yaw = puncher:get_look_horizontal()
+				entity.object:set_rotation({x = 0, y = yaw, z = 0})
+			end
 			 minecart.start_entitycart(entity, pos)
 		end
 	end
@@ -44,10 +48,10 @@ function minecart.show_formspec(pos, clicker)
 	local owner = M(pos):get_string("owner")
 	if minecart.is_owner(clicker, owner) then
 		minetest.show_formspec(owner, "minecart:userID_node",
-					"size[4,3]" ..
-					"label[0,0;Enter cart number:]" ..
-					"field[1,1;3,1;userID;;]" ..
-					"button_exit[1,2;2,1;exit;Save]")	
+			"size[4,3]" ..
+			"label[0,0;" .. S("Enter cart number") .. ":]" ..
+			"field[1,1;3,1;userID;;]" ..
+			"button_exit[1,2;2,1;exit;" .. S("Save") .. "]")	
 	end
 end
 
@@ -83,7 +87,7 @@ end
 
 -- Start the node cart (or dig by shift+leftclick)
 function minecart.on_nodecart_punch(pos, node, puncher, pointed_thing)
-	print("on_nodecart_punch")
+	--print("on_nodecart_punch")
 	local owner = M(pos):get_string("owner")
 	local userID = M(pos):get_int("userID")
 	if minecart.is_owner(puncher, owner) then
@@ -101,7 +105,7 @@ end
 
 minetest.register_on_player_receive_fields(function(player, formname, fields)
     if formname == "minecart:userID_node" then
-		if fields.exit == "Save" or fields.key_enter == "true" then
+		if fields.exit or fields.key_enter == "true" then
 			local cart_pos = S2P(player:get_meta():get_string("cart_pos"))
 			local owner = M(cart_pos):get_string("owner")
 			if minecart.is_owner(player, owner) then
@@ -113,7 +117,7 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 							player:get_player_name() .. ": " .. userID)
 					local node = minetest.get_node(cart_pos)
 					local entity_name = minecart.tNodeNames[node.name]
-					minecart.monitoring_add_cart(owner, userID, cart_pos, node.name, entity_name, {})
+					minecart.monitoring_add_cart(owner, userID, cart_pos, node.name, entity_name)
 				end
 			end
 		end

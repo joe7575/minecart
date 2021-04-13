@@ -26,21 +26,15 @@ license).
 3. https://github.com/stujones11/railcart/
 
 
-Original Cart Features
-----------------------
-
-- A fast cart for your railway or roller coaster (up to 7 m/s!)
-- Boost and brake rails
-- Rail junction switching with the 'right-left' walking keys
-- Handbrake with the 'back' key
-
-
 Minecart Features
 -----------------
 
 The mod Minecart has its own cart (called Minecart) in addition to the standard cart.
 Minecarts are used for automated item transport on private and public rail networks.
 The mod features are:
+- a fast cart for your railway or roller coaster (up to 8 m/s!)
+- boost rails and speed limit signs
+- rail junction switching with the 'right-left' walking keys
 - configurable timetables and routes for Minecarts
 - automated loading/unloading of Minecarts by means of a Minecart Hopper
 - rail network protection based on protection blocks called Land Marks
@@ -82,8 +76,7 @@ Introduction
 10. Check the cart state via the chat command: /mycart <num>
     '<num>' is the cart number
 11. Drop items into the Minecart and punch the cart to start it, or "sneak+click" the 
-    Minecart to get the items back
-12. Dig the empty cart with a second "sneak+click" (as usual)
+    Minecart to get cart and items back
 
 
 Hopper
@@ -95,6 +88,7 @@ The Hopper is used to load/unload Minecarts.
 The Hopper can pull and push items into/out off chests and can drop/pick up items 
 to/from Minecarts. To unload a Minecart place the hopper below the rail. 
 To load the Minecart, place the hopper right next to the Minecart.
+
 
 
 History
@@ -118,3 +112,4 @@ History
 2020-07-24  V1.08  Adapted to new techage ICTA style  
 2020-08-14  V1.09  Hopper support for digtron, protector:chest and default:furnace added    
 2020-11-12  V1.10  Make carts more robust against server lag
+2021-04-10  V2.00  Complete revision to make carts robust against server load/lag

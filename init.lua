@@ -37,6 +37,7 @@ dofile(MP .. "/buffer.lua")
 dofile(MP .. "/protection.lua")
 dofile(MP .. "/tool.lua")
 dofile(MP .. "/signs.lua")
+dofile(MP .. "/terminal.lua")
 
 if minecart.hopper_enabled then
 	dofile(MP .. "/hopper.lua")

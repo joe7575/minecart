@@ -50,15 +50,32 @@ local function dashboard_update(self)
 	if self.driver and self.hud_id then
 		local player = minetest.get_player_by_name(self.driver)
 		if player then
-			local num = self.num_sections or 0
-			local dir = (self.ctrl and self.ctrl.left and "left") or 
-					(self.ctrl and self.ctrl.right and "right") or "straight"
+			local time = self.runtime or 0
+			local dir = (self.ctrl and self.ctrl.left and S("left")) or 
+					(self.ctrl and self.ctrl.right and S("right")) or S("straight")
 			local speed = math.floor((self.speed or 0) + 0.5)
-			local s = string.format("Recording: speed = %.1f | dir = %-8s | %u sections", 
-					speed, dir, num)
+			local s = string.format(S("Recording") .. 
+					" | " .. S("speed") .. 
+					": %.1f | " .. S("next junction") .. 
+					": %-8s | " .. S("Travel time") .. ": %.1f s", 
+					speed, dir, time)
 			player:hud_change(self.hud_id, "text", s)
 		end
 	end
+end
+
+local function check_waypoint(self, pos)
+	-- If next waypoint already reached but not handled
+	-- determine next waypoint
+	if vector.equals(pos, self.waypoint.pos) then
+		local rot = self.object:get_rotation()
+		local dir = minetest.yaw_to_dir(rot.y)
+		dir.y = math.floor((rot.x / (math.pi/4)) + 0.5)
+		local facedir = minetest.dir_to_facedir(dir)
+		local waypoint = minecart.get_waypoint(pos, facedir, self.ctrl, false)
+		return waypoint.pos
+	end
+	return self.waypoint.pos
 end
 
 --
@@ -74,7 +91,9 @@ function minecart.start_recording(self, pos)
 			self.is_recording = true
 			self.rec_time = self.timebase
 			self.hud_time = self.timebase
+			self.runtime = 0
 			self.num_sections = 0
+			self.sum_speed = 0
 			self.ctrl = {}
 			dashboard_create(self)
 			dashboard_update(self, 0)
@@ -96,6 +115,10 @@ function minecart.stop_recording(self, pos)
 				}
 				minecart.store_route(self.start_pos, route)
 				minetest.chat_send_player(self.driver, S("[minecart] Route stored!"))
+				local speed = self.sum_speed / #self.checkpoints
+				local length = speed * self.runtime
+				local fmt = S("[minecart] Speed = %u m/s, Time = %u s, Route length = %u m")
+				minetest.chat_send_player(self.driver, string.format(fmt, speed, self.runtime, length))
 			end
 		end
 		dashboard_destroy(self)
@@ -107,10 +130,12 @@ end
 
 function minecart.recording_waypoints(self)	
 	local pos = vector.round(self.object:get_pos())
+	self.sum_speed = self.sum_speed + self.speed 
+	local wp_pos = check_waypoint(self, pos)
 	self.checkpoints[#self.checkpoints+1] = {
-		-- cart_pos, new_pos, speed, dot
+		-- cart_pos, next_waypoint_pos, speed, dot
 		P2H(pos), 
-		P2H(self.waypoint.pos), 
+		P2H(wp_pos), 
 		math.floor(self.speed + 0.5),
 		self.waypoint.dot
 	}
@@ -131,6 +156,7 @@ function minecart.recording_junctions(self, speed)
 	if self.hud_time <= self.timebase then
 		dashboard_update(self)
 		self.hud_time = self.timebase + 0.5
+		self.runtime = self.runtime + 0.5
 	end
 end
 

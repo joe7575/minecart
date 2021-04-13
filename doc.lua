@@ -33,11 +33,11 @@ local summary_doc = table.concat({
 	S("8. Optional: Protect your rail network with the Protection Landmarks (one Landmark at least every 16 nodes/meters)."),
 	S("9. Place a Minecart in front of the buffer and check whether it starts after the configured time."),
 	S("10. Check the cart state via the chat command: /mycart <num>\n   '<num>' is the cart number"),
-	S("11. Drop items into the Minecart and punch the cart to start it, or 'sneak+click' the Minecart to get the items back."),
-	S("12. Dig the empty cart with a second 'sneak+click' (as usual)."),
+	S("11. Drop items into the Minecart and punch the cart to start it."),
+	S("12. Dig the cart with 'sneak+click' (as usual). The items will be drop down."),
 }, "\n")
 
-local cart_doc = S("Primary used to transport items. You can drop items into the Minecart and punch the cart to get started. Sneak+click the cart to get the items back")
+local cart_doc = S("Primary used to transport items. You can drop items into the Minecart and punch the cart to get started. Sneak+click the cart to get cart and items back")
 
 local buffer_doc = S("Used as buffer on both rail ends. Needed to be able to record the cart routes")
 

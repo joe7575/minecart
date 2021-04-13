@@ -13,7 +13,7 @@
 local S = minecart.S
 local M = minetest.get_meta
 
-minetest.register_node("minecart:cart_node", {
+minetest.register_node("minecart:cart", {
 	description = S("Minecart (Sneak+Click to pick up)"),
 	tiles = {
 		-- up, down, right, left, back, front		
@@ -57,7 +57,7 @@ minetest.register_node("minecart:cart_node", {
 		if clicker and clicker:is_player() then
 			if M(pos):get_int("userID") ~= 0 then
 				-- enter the cart
-				local object = minecart.node_to_entity(pos, "minecart:cart_node", "minecart:cart")
+				local object = minecart.node_to_entity(pos, "minecart:cart", "minecart:cart_entity")
 				minecart.manage_attachment(clicker, object:get_luaentity(), true)
 			else 
 				minecart.show_formspec(pos, clicker)
@@ -84,20 +84,21 @@ minetest.register_node("minecart:cart_node", {
 	end,
 })
 
-minecart.register_cart_entity("minecart:cart", "minecart:cart_node", {
+minecart.register_cart_entity("minecart:cart_entity", "minecart:cart", "default", {
 	initial_properties = {
 		physical = false,
 		collisionbox = {-0.5, -0.5, -0.5, 0.5, 0.5, 0.5},
 		visual = "wielditem",
-		textures = {"minecart:cart_node"},
+		textures = {"minecart:cart"},
 		visual_size = {x=0.66, y=0.66, z=0.66},
 		static_save = false,
 	},
+	driver_allowed = true,
 })
 
 
 minetest.register_craft({
-	output = "minecart:cart_node",
+	output = "minecart:cart",
 	recipe = {
 		{"default:steel_ingot", "default:cobble", "default:steel_ingot"},
 		{"default:steel_ingot", "default:steel_ingot", "default:steel_ingot"},
