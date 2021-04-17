@@ -53,7 +53,7 @@ local function dashboard_update(self)
 			local time = self.runtime or 0
 			local dir = (self.ctrl and self.ctrl.left and S("left")) or 
 					(self.ctrl and self.ctrl.right and S("right")) or S("straight")
-			local speed = math.floor((self.speed or 0) + 0.5)
+			local speed = math.floor((self.curr_speed or 0) + 0.5)
 			local s = string.format(S("Recording") .. 
 					" | " .. S("speed") .. 
 					": %.1f | " .. S("next junction") .. 
@@ -130,13 +130,13 @@ end
 
 function minecart.recording_waypoints(self)	
 	local pos = vector.round(self.object:get_pos())
-	self.sum_speed = self.sum_speed + self.speed 
+	self.sum_speed = self.sum_speed + self.curr_speed 
 	local wp_pos = check_waypoint(self, pos)
 	self.checkpoints[#self.checkpoints+1] = {
 		-- cart_pos, next_waypoint_pos, speed, dot
 		P2H(pos), 
 		P2H(wp_pos), 
-		math.floor(self.speed + 0.5),
+		math.floor(self.curr_speed + 0.5),
 		self.waypoint.dot
 	}
 end

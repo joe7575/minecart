@@ -27,6 +27,8 @@ local function DOTS(dots)
 	end
 end
 
+local old_pos
+
 local function test_get_route(pos, node, player)
 	local yaw = player:get_look_horizontal()
 	local dir = minetest.yaw_to_dir(yaw)
@@ -34,9 +36,20 @@ local function test_get_route(pos, node, player)
 	local route = minecart.get_waypoint(pos, facedir, {})
 	if route then
 --		print(dump(route))
-		print("test_get_route", string.format("dist = %u, dot = %u, power = %d", 
-				vector.distance(pos, route.pos), route.dot, route.power))
-		minecart.set_marker(route.pos, "pos")
+		minecart.set_marker(route.pos, "pos", 0.3, 10)
+		if route.cart_pos then
+			minecart.set_marker(route.cart_pos, "cart", 0.3, 10)
+		end
+		
+		-- determine some kind of current y
+		old_pos = old_pos or pos
+		local curr_y = pos.y > old_pos.y and 1 or pos.y < old_pos.y and -1 or 0
+		
+		local cart_pos, extra_cycle = minecart.get_current_cart_pos_correction(pos, facedir, curr_y, route.dot)
+		minecart.set_marker(cart_pos, "curr", 0.3, 10)
+		old_pos = pos
+		print(string.format("Route: dist = %u, dot = %u, speed = %d, extra cycle = %s", 
+				vector.distance(pos, route.pos), route.dot, route.speed, extra_cycle))
 	end
 end
 
@@ -48,6 +61,7 @@ local function test_get_connections(pos, node, player, ctrl)
 			print(sDir[i], vector.distance(pos, wp[i].pos), dir.y)
 		end
 	end
+	print(dump(M(pos):to_table()))
 end
 
 local function click_left(itemstack, placer, pointed_thing)

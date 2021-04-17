@@ -35,10 +35,10 @@ local function register_sign(def)
 		},
 		
 		after_place_node = function(pos)
-			minecart.delete_waypoints(pos)
+			minecart.delete_waypoints_for_signs(pos)
 		end,
 		after_dig_node = function(pos)
-			minecart.delete_waypoints(pos)
+			minecart.delete_waypoints_for_signs(pos)
 		end,
 		
 		on_rotate = screwdriver.disallow,

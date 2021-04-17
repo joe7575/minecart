@@ -14,8 +14,7 @@ local P2S = function(pos) if pos then return minetest.pos_to_string(pos) end end
 local P2H = minetest.hash_node_position
 local H2P = minetest.get_position_from_hash
 local MAX_SPEED = minecart.MAX_SPEED
-local Dot2Dir = minecart.Dot2Dir
-local Dir2Dot = minecart.Dir2Dot
+local dot2dir = minecart.dot2dir
 local get_waypoint = minecart.get_waypoint
 local recording_waypoints = minecart.recording_waypoints
 local recording_junctions = minecart.recording_junctions
@@ -46,26 +45,46 @@ local function get_ctrl(self, pos)
 	return (self.driver and self.ctrl) or (self.junctions and self.junctions[P2H(pos)]) or {}
 end
 
+local function new_speed(self, new_dir)
+	self.cart_speed = self.cart_speed or 0
+	local rail_speed = self.waypoint.speed / 10
+	
+	if rail_speed <= 0 then
+		rail_speed = math.max(self.cart_speed + rail_speed, 0)
+	elseif rail_speed <= self.cart_speed then
+		rail_speed = math.max((self.cart_speed + rail_speed) / 2, 0)
+	end
+	
+	-- Speed corrections
+	if new_dir.y == 1 then
+		if rail_speed < 1 then rail_speed = 0 end
+	else
+		if rail_speed < 0.4 then rail_speed = 0 end
+	end
+	
+	self.cart_speed = rail_speed -- store for next cycle
+	return rail_speed
+end
+
 local function running(self)
 	local rot = self.object:get_rotation()
 	local dir = minetest.yaw_to_dir(rot.y)
 	dir.y = math.floor((rot.x / (math.pi/4)) + 0.5)
 	local facedir = minetest.dir_to_facedir(dir)
-	local cart_pos, wayp_pos, cart_speed, new_speed, is_junction
+	local cart_pos, wayp_pos, is_junction
 	
 	if self.reenter then -- through monitoring
 		cart_pos = H2P(self.reenter[1])
 		wayp_pos = cart_pos
-		cart_speed = self.reenter[3]
 		is_junction = false
-		self.waypoint = {pos = H2P(self.reenter[2]), power = 0, limit = MAX_SPEED * 100, dot = self.reenter[4]}
+		self.waypoint = {pos = H2P(self.reenter[2]), power = 0, dot = self.reenter[4]}
 		self.reenter = nil
-		--print("reenter", P2S(cart_pos), cart_speed)
+		self.cart_speed = self.reenter[3]
+		self.speed_limit = MAX_SPEED
 	elseif not self.waypoint then
 		-- get waypoint
 		cart_pos = vector.round(self.object:get_pos())
 		wayp_pos = cart_pos
-		cart_speed = 2
 		is_junction = false
 		self.waypoint = get_waypoint(cart_pos, facedir, get_ctrl(self, cart_pos), true)
 		if self.no_normal_start then
@@ -73,14 +92,14 @@ local function running(self)
 			minecart.delete_waypoint(cart_pos)
 			self.no_normal_start = nil
 		end
+		self.cart_speed = 2  -- push speed
+		self.speed_limit = MAX_SPEED
 	else
 		-- next waypoint
 		cart_pos = vector.new(self.waypoint.cart_pos or self.waypoint.pos)
-		--print("next waypoint", P2S(cart_pos))
 		wayp_pos = self.waypoint.pos
 		local vel = self.object:get_velocity()
-		cart_speed = math.sqrt((vel.x+vel.z)^2 + vel.y^2)
-		self.waypoint, is_junction = get_waypoint(wayp_pos, facedir, get_ctrl(self, wayp_pos), cart_speed < 0.1)
+		self.waypoint, is_junction = get_waypoint(wayp_pos, facedir, get_ctrl(self, wayp_pos), self.cart_speed < 0.1)
 	end
 
 	if not self.waypoint then
@@ -92,26 +111,20 @@ local function running(self)
 		self.ctrl = nil
 	end
 	
-	-- Calc speed
-	local rail_power = self.waypoint.power / 100
-	local speed_limit = self.waypoint.limit / 100
-	--print("speed", rail_power, speed_limit)
-	if rail_power <= 0 then
-		new_speed = math.max(cart_speed + rail_power, 0)
-		new_speed = math.min(new_speed, speed_limit)
-	elseif rail_power < cart_speed then
-		new_speed = math.min((cart_speed + rail_power) / 2, speed_limit)
-	else
-		new_speed = math.min(rail_power, speed_limit)
-	end
-	-- Speed corrections
-	local new_dir = Dot2Dir[self.waypoint.dot]
-	if new_dir.y == 1 then
-		if new_speed < 1 then new_speed = 0 end
-	elseif new_dir.y == -1 then
-		if new_speed < 3 then new_speed = 3 end
-	else
-		if new_speed < 0.4 then new_speed = 0 end
+	--print("dist", P2S(cart_pos), P2S(self.waypoint.pos), P2S(self.waypoint.cart_pos), self.waypoint.dot)
+	local dist = vector.distance(cart_pos, self.waypoint.cart_pos or self.waypoint.pos)
+	local new_dir = dot2dir(self.waypoint.dot)
+	local new_speed = new_speed(self, new_dir)
+	self.speed_limit = minecart.get_speedlimit(wayp_pos, facedir) or self.speed_limit
+	new_speed = math.min(new_speed, self.speed_limit)
+	
+	local new_cart_pos, extra_cycle = minecart.get_current_cart_pos_correction(
+			wayp_pos, facedir, dir.y, self.waypoint.dot)
+	if extra_cycle and not vector.equals(cart_pos, new_cart_pos) then
+		self.waypoint = {pos = wayp_pos, cart_pos = new_cart_pos}
+		new_dir = vector.direction(cart_pos, new_cart_pos)
+		dist = vector.distance(cart_pos, new_cart_pos)
+		--print("extra_cycle", P2S(cart_pos), P2S(wayp_pos), P2S(new_cart_pos), new_speed)
 	end
 	
 	-- Slope corrections
@@ -123,17 +136,18 @@ local function running(self)
 	-- Calc velocity, rotation and arrival_time
 	local yaw = minetest.dir_to_yaw(new_dir)
 	local pitch = new_dir.y * math.pi/4
-	local dist = vector.distance(cart_pos, self.waypoint.cart_pos or self.waypoint.pos)
-	local vel = vector.multiply(new_dir, new_speed / (new_dir.y ~= 0 and 1.41 or 1))
+	--print("new_speed", new_speed / (new_dir.y ~= 0 and 1.41 or 1))
+	local vel = vector.multiply(new_dir, new_speed / ((new_dir.y ~= 0) and 1.41 or 1))
 	self.arrival_time = self.timebase + (dist / new_speed)
 	-- needed for recording
-	self.speed = new_speed  
+	self.curr_speed = new_speed  
 	self.num_sections = (self.num_sections or 0) + 1
 	
 	-- Got stuck somewhere
 	if new_speed < 0.1 or dist < 0.2 then
 		print("Got stuck somewhere", new_speed, dist)
-		stop_cart(self, wayp_pos)
+		--stop_cart(self, wayp_pos)
+		self.object:set_velocity({x = 0, y = 0, z = 0})
 		return
 	end
 		
@@ -152,7 +166,7 @@ local function play_sound(self)
 	self.sound_handle = minetest.sound_play(
 		"carts_cart_moving", {
 		object = self.object,
-		gain = self.speed / MAX_SPEED,
+		gain = self.curr_speed / MAX_SPEED,
 	})
 end
 

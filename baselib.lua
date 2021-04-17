@@ -84,11 +84,15 @@ function minecart.find_node_near_lvm(pos, radius, items)
 end
 
 -- Marker entities for debugging purposes
-function minecart.set_marker(pos, text)
+function minecart.set_marker(pos, text, size, ttl)
 	local marker = minetest.add_entity(pos, "minecart:marker_cube")
 	if marker ~= nil then
 		marker:set_nametag_attributes({color = "#FFFFFF", text = text})
-		--minetest.after(20, marker.remove, marker)
+		size = size or 1
+		marker:set_properties({visual_size = {x = size, y = size}})
+		if ttl then
+			minetest.after(ttl, marker.remove, marker)
+		end
 	end
 end
 
@@ -104,8 +108,8 @@ minetest.register_entity(":minecart:marker_cube", {
 			"minecart_marker_cube.png",
 		},
 		physical = false,
-		visual_size = {x = 0.9, y = 0.9},
-		collisionbox = {-0.45,-0.45,-0.45, 0.45,0.45,0.45},
+		visual_size = {x = 1, y = 1},
+		collisionbox = {-0.25,-0.25,-0.25, 0.25,0.25,0.25},
 		glow = 8,
 		static_save = false,
 	},

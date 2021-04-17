@@ -127,7 +127,7 @@ local function monitoring(cycle)
 				local pos = entity.object:get_pos()
 				if pos then
 					cart.last_pos = vector.round(pos)
-					print("entity card " .. cart.userID .. " at " .. P2S(cart.last_pos))
+					--print("entity card " .. cart.userID .. " at " .. P2S(cart.last_pos))
 				else
 					print("entity card without pos!")
 				end
@@ -136,7 +136,7 @@ local function monitoring(cycle)
 				local cp, last_cp = get_checkpoint(cart)
 				if cp then
 					cart.last_pos = H2P(cp[1])
-					print("zombie " .. cart.userID .. " at " .. P2S(cart.last_pos))
+					--print("zombie " .. cart.userID .. " at " .. P2S(cart.last_pos))
 					if is_player_nearby(cart.last_pos) or last_cp then
 						zombie_to_entity(cart.last_pos, cart, cp)
 					end
