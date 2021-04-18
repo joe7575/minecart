@@ -72,7 +72,7 @@ local function check_waypoint(self, pos)
 		local dir = minetest.yaw_to_dir(rot.y)
 		dir.y = math.floor((rot.x / (math.pi/4)) + 0.5)
 		local facedir = minetest.dir_to_facedir(dir)
-		local waypoint = minecart.get_waypoint(pos, facedir, self.ctrl, false)
+		local waypoint = minecart.get_waypoint(pos, facedir, self.ctrl or {}, false)
 		return waypoint.pos
 	end
 	return self.waypoint.pos

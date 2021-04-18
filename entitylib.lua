@@ -47,7 +47,7 @@ end
 
 local function new_speed(self, new_dir)
 	self.cart_speed = self.cart_speed or 0
-	local rail_speed = self.waypoint.speed / 10
+	local rail_speed = (self.waypoint.speed or 0) / 10
 	
 	if rail_speed <= 0 then
 		rail_speed = math.max(self.cart_speed + rail_speed, 0)
@@ -70,6 +70,7 @@ local function running(self)
 	local rot = self.object:get_rotation()
 	local dir = minetest.yaw_to_dir(rot.y)
 	dir.y = math.floor((rot.x / (math.pi/4)) + 0.5)
+	dir = vector.round(dir)
 	local facedir = minetest.dir_to_facedir(dir)
 	local cart_pos, wayp_pos, is_junction
 	
@@ -78,9 +79,9 @@ local function running(self)
 		wayp_pos = cart_pos
 		is_junction = false
 		self.waypoint = {pos = H2P(self.reenter[2]), power = 0, dot = self.reenter[4]}
-		self.reenter = nil
 		self.cart_speed = self.reenter[3]
 		self.speed_limit = MAX_SPEED
+		self.reenter = nil
 	elseif not self.waypoint then
 		-- get waypoint
 		cart_pos = vector.round(self.object:get_pos())
@@ -115,7 +116,11 @@ local function running(self)
 	local dist = vector.distance(cart_pos, self.waypoint.cart_pos or self.waypoint.pos)
 	local new_dir = dot2dir(self.waypoint.dot)
 	local new_speed = new_speed(self, new_dir)
-	self.speed_limit = minecart.get_speedlimit(wayp_pos, facedir) or self.speed_limit
+	-- If no dir change, then it's probably a speed limit sign
+	print("equals", P2S(new_dir), P2S(dir))
+	if vector.equals(new_dir, dir) then
+		self.speed_limit = minecart.get_speedlimit(wayp_pos, facedir) or self.speed_limit
+	end
 	new_speed = math.min(new_speed, self.speed_limit)
 	
 	local new_cart_pos, extra_cycle = minecart.get_current_cart_pos_correction(
