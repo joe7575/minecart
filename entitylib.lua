@@ -32,12 +32,11 @@ local function stop_cart(self, cart_pos)
 			minecart.manage_attachment(player, self, false)
 		end
 	end
-	minecart.entity_to_node(cart_pos, self)
-	
 	if not minecart.get_buffer_pos(cart_pos, self.owner) then
 		-- Probably somewhere in the pampas 
-		minecart.delete_waypoint(cart_pos)
+		minecart.delete_cart_waypoint(cart_pos)
 	end
+	minecart.entity_to_node(cart_pos, self)
 end
 
 local function get_ctrl(self, pos)
@@ -116,9 +115,9 @@ local function running(self)
 	local dist = vector.distance(cart_pos, self.waypoint.cart_pos or self.waypoint.pos)
 	local new_dir = dot2dir(self.waypoint.dot)
 	local new_speed = new_speed(self, new_dir)
-	-- If no dir change, then it's probably a speed limit sign
-	print("equals", P2S(new_dir), P2S(dir))
-	if vector.equals(new_dir, dir) then
+	local straight_ahead = vector.equals(new_dir, dir)
+	-- If straight_ahead, then it's probably a speed limit sign
+	if straight_ahead then
 		self.speed_limit = minecart.get_speedlimit(wayp_pos, facedir) or self.speed_limit
 	end
 	new_speed = math.min(new_speed, self.speed_limit)
@@ -155,7 +154,7 @@ local function running(self)
 		self.object:set_velocity({x = 0, y = 0, z = 0})
 		return
 	end
-		
+	
 	self.object:set_pos(cart_pos)
 	self.object:set_rotation({x = pitch, y = yaw, z = 0})
 	self.object:set_velocity(vel)

@@ -12,6 +12,7 @@
 
 local S = minecart.S
 
+
 local function register_sign(def)
 	minetest.register_node("minecart:"..def.name, {
 		description = def.description,
@@ -34,12 +35,8 @@ local function register_sign(def)
 			"default_steel_block.png^"..def.image,
 		},
 		
-		after_place_node = function(pos)
-			minecart.delete_waypoints_for_signs(pos)
-		end,
-		after_dig_node = function(pos)
-			minecart.delete_waypoints_for_signs(pos)
-		end,
+		after_place_node = minecart.delete_signs_waypoint,
+		preserve_metadata = minecart.delete_signs_waypoint,
 		
 		on_rotate = screwdriver.disallow,
 		paramtype = "light",

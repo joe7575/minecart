@@ -46,11 +46,6 @@ local function pop(cycle)
 	end
 end
 
-local function back_to_start(cart)
-	--minecart.add_nodecart(cart.start_pos, cart.node_name, 0, cart.cargo, cart.owner, cart.userID)
-	--minecart.stop_monitoring(cart.owner, cart.userID, )
-end
-
 local function is_player_nearby(pos)
 	for _, object in pairs(minetest.get_objects_inside_radius(pos, 64)) do
 		if object:is_player() then
