@@ -19,23 +19,39 @@ local S = minecart.S
 
 local storage = minetest.get_mod_storage()
 
+local function place_carts(t)
+	local Carts = {
+		["minecart:cart"] = "minecart:cart",
+		["techage:tank_cart_entity"] = "techage:tank_cart",
+		["techage:chest_cart_entity"] = "techage:chest_cart",
+	}
+	for id, item in pairs(t) do
+		local pos = vector.round((item.start_pos or item.last_pos))
+		local name = Carts[item.entity_name] or "minecart:cart"
+		--print(P2S(pos), name, item.owner, item.userID)
+		if minetest.registered_nodes[name] then
+			minecart.add_nodecart(pos, name, 0, {}, item.owner or "", item.userID or 0)
+		end
+	end
+end
+
 -------------------------------------------------------------------------------
 -- Store data of running carts
 -------------------------------------------------------------------------------
 minecart.CartsOnRail = {}
 
-
 minetest.register_on_mods_loaded(function()
 	local version = storage:get_int("version")
 	if version < 2 then
-		--minecart.CartsOnRail = {} -- convert_to_v2()
+		local t = minetest.deserialize(storage:get_string("CartsOnRail")) or {}
+		minetest.after(5, place_carts, t)
 		storage:set_int("version", 2)
 	else
 		local t = minetest.deserialize(storage:get_string("CartsOnRail")) or {}
 		for owner, carts in pairs(t) do
 			minecart.CartsOnRail[owner] = {}
 			for userID, cart in pairs(carts) do
-				print("reload cart", owner, userID, cart.objID)
+     				print("reload cart", owner, userID, cart.objID)
 				minecart.CartsOnRail[owner][userID] = cart
 				-- mark all entity carts as zombified
 				if cart.objID and cart.objID ~= 0 then
@@ -90,6 +106,7 @@ function minecart.get_route(pos)
 			local route = minetest.deserialize(s)
 			if route.waypoints then
 				M(pos):set_string("route", "")
+				M(pos):set_int("time", 0)
 				return
 			end
 			return minetest.deserialize(s)

@@ -27,7 +27,7 @@ local function formspec(pos)
 		"label[0,0;Configuration]" ..
 		"field[0.5,1.2;3.6,1;name;"..S("Station name")..":;"..name.."]"..
 		"button_exit[1,3.4;2,1;exit;Save]"..
-		"field[0.5,2.5;3.6,1;time;"..S("Stop time/sec")..":;"..time.."]"
+		"field[0.5,2.5;3.6,1;time;"..S("Waiting time/sec")..":;"..time.."]"
 end
 
 local function remote_station_name(pos)
@@ -147,4 +147,15 @@ minetest.register_craft({
 		{"dye:red", "", "dye:white"},
 		{"default:steel_ingot", "default:junglewood", "default:steel_ingot"},
 	},
+})
+
+minetest.register_lbm({
+	label = "Delete waiting times",
+	name = "minecart:del_time",
+	nodenames = {"minecart:buffer"},
+	run_at_every_load = false,
+	action = function(pos, node)
+		M(pos):set_int("time", 0)
+		M(pos):set_string("formspec", formspec(pos))
+	end,
 })

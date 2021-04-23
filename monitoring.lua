@@ -23,14 +23,7 @@ local Queue = {}
 local first = 0
 local last = -1
 
-local function dbgout(cart, title)
-	--print(dump(cart))
-	print(title .. ": cycle = " .. (cart.cycle or 0) .. ", owner = " .. cart.owner .. ", userID = " .. cart.userID .. ", objID = " .. dump(cart.objID) .. ", last_pos = " .. P2S(cart.last_pos or cart.pos))
-end
-	
-
 local function push(cycle, item)
-	--dbgout(item, "push")
 	last = last + 1
 	item.cycle = cycle
 	Queue[last] = item
@@ -75,9 +68,9 @@ local function get_checkpoint(cart)
 		cp = cart.checkpoints[cart.idx]
 	end
 	local pos = H2P(cp[1])
-	if M(pos):contains("waypoints") then
-		print("get_checkpoint", P2S(H2P(cp[1])), P2S(H2P(cp[2])))
-	end
+--	if M(pos):contains("waypoints") then
+--		print("get_checkpoint", P2S(H2P(cp[1])), P2S(H2P(cp[2])))
+--	end
 	return cp, cart.idx == #cart.checkpoints
 end
 
@@ -144,7 +137,7 @@ local function monitoring(cycle)
 				pos = minecart.add_nodecart(pos, cart.node_name, 0, cart.cargo, cart.owner, cart.userID)
 				cart.objID = 0
 				cart.pos = pos
-				print("cart to node", cycle, cart.userID, P2S(pos))
+				--print("cart to node", cycle, cart.userID, P2S(pos))
 			end
 		elseif cart and not cart.objID and tCartsOnRail[cart.owner] then
 			-- Delete carts marked as "to be deleted"
@@ -159,7 +152,7 @@ minetest.after(5, monitoring, 2)
 
 
 function minecart.monitoring_add_cart(owner, userID, pos, node_name, entity_name)
-	print("monitoring_add_cart", owner, userID)
+	--print("monitoring_add_cart", owner, userID)
 	tCartsOnRail[owner] = tCartsOnRail[owner] or {}
 	tCartsOnRail[owner][userID] = {
 		owner = owner,
@@ -174,7 +167,7 @@ function minecart.monitoring_add_cart(owner, userID, pos, node_name, entity_name
 end
 	
 function minecart.start_monitoring(owner, userID, pos, objID, checkpoints, junctions, cargo)
-	print("start_monitoring", owner, userID)
+	--print("start_monitoring", owner, userID)
 	if tCartsOnRail[owner] and tCartsOnRail[owner][userID] then
 		tCartsOnRail[owner][userID].pos = pos
 		tCartsOnRail[owner][userID].objID = objID
@@ -188,7 +181,7 @@ function minecart.start_monitoring(owner, userID, pos, objID, checkpoints, junct
 end
 
 function minecart.stop_monitoring(owner, userID, pos)
-	print("stop_monitoring", owner, userID)
+	--print("stop_monitoring", owner, userID)
 	if tCartsOnRail[owner] and tCartsOnRail[owner][userID] then
 		tCartsOnRail[owner][userID].pos = pos
 		tCartsOnRail[owner][userID].objID = 0
@@ -197,11 +190,18 @@ function minecart.stop_monitoring(owner, userID, pos)
 end
 
 function minecart.monitoring_remove_cart(owner, userID)
-	print("monitoring_remove_cart", owner, userID)
+	--print("monitoring_remove_cart", owner, userID)
 	if tCartsOnRail[owner] and tCartsOnRail[owner][userID] then
 		tCartsOnRail[owner][userID].objID = nil
 		tCartsOnRail[owner][userID] = nil
 		minecart.store_carts()
+	end
+end
+
+function minecart.monitoring_valid_cart(owner, userID, pos, node_name)
+	if tCartsOnRail[owner] and tCartsOnRail[owner][userID] then
+		return vector.equals(tCartsOnRail[owner][userID].pos, pos) and 
+				tCartsOnRail[owner][userID].node_name == node_name
 	end
 end
 

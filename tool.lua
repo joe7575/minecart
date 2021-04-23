@@ -49,7 +49,7 @@ local function test_get_route(pos, node, player)
 		minecart.set_marker(cart_pos, "curr", 0.3, 10)
 		old_pos = pos
 		print(string.format("Route: dist = %u, dot = %u, speed = %d, extra cycle = %s", 
-				vector.distance(pos, route.pos), route.dot, route.speed, extra_cycle))
+				vector.distance(pos, route.pos), route.dot, route.speed or 0, extra_cycle))
 	end
 end
 

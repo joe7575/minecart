@@ -73,7 +73,9 @@ local function check_waypoint(self, pos)
 		dir.y = math.floor((rot.x / (math.pi/4)) + 0.5)
 		local facedir = minetest.dir_to_facedir(dir)
 		local waypoint = minecart.get_waypoint(pos, facedir, self.ctrl or {}, false)
-		return waypoint.pos
+		if waypoint then
+			return waypoint.pos
+		end
 	end
 	return self.waypoint.pos
 end
@@ -82,11 +84,11 @@ end
 -- Route recording
 --
 function minecart.start_recording(self, pos)	
-	print("start_recording")
+	--print("start_recording")
 	if self.driver then
 		self.start_pos = minecart.get_buffer_pos(pos, self.driver)
 		if self.start_pos then
-			self.checkpoints = {}
+			self.checkpoints = {} -- {cart_pos, next_waypoint_pos, speed, dot}
 			self.junctions = {}
 			self.is_recording = true
 			self.rec_time = self.timebase
@@ -102,11 +104,13 @@ function minecart.start_recording(self, pos)
 end
 
 function minecart.stop_recording(self, pos)	
-	print("stop_recording")
+	--print("stop_recording")
 	if self.driver and self.is_recording then
 		local dest_pos = minecart.get_buffer_pos(pos, self.driver)
 		local player = minetest.get_player_by_name(self.driver)
-		if dest_pos and player and #self.checkpoints > 2 then
+		if dest_pos and player and #self.checkpoints > 3 then
+			-- Remove last checkpoint, because it is potentially too close to the dest_pos
+			table.remove(self.checkpoints) 
 			if self.start_pos then
 				local route = {
 					dest_pos = dest_pos,
@@ -124,12 +128,14 @@ function minecart.stop_recording(self, pos)
 		dashboard_destroy(self)
 	end
 	self.is_recording = false
+	self.checkpoints = nil
 	self.waypoints = nil
 	self.junctions = nil
 end
 
 function minecart.recording_waypoints(self)	
 	local pos = vector.round(self.object:get_pos())
+	-- hier müsste überprüfung dest_pos rein
 	self.sum_speed = self.sum_speed + self.curr_speed 
 	local wp_pos = check_waypoint(self, pos)
 	self.checkpoints[#self.checkpoints+1] = {

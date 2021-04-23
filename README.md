@@ -74,7 +74,7 @@ Introduction
 9. Place a Minecart in front of the buffer and check whether it starts after the 
    configured time
 10. Check the cart state via the chat command: /mycart <num>
-    '<num>' is the cart number
+    '<num>' is the cart number, or get a list of carts with /mycart
 11. Drop items into the Minecart and punch the cart to start it, or "sneak+click" the 
     Minecart to get cart and items back
 

@@ -150,8 +150,7 @@ local function running(self)
 	-- Got stuck somewhere
 	if new_speed < 0.1 or dist < 0.2 then
 		print("Got stuck somewhere", new_speed, dist)
-		--stop_cart(self, wayp_pos)
-		self.object:set_velocity({x = 0, y = 0, z = 0})
+		stop_cart(self, wayp_pos)
 		return
 	end
 	

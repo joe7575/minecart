@@ -35,6 +35,8 @@ local tWaypoints = {} -- {pos_hash = waypoints, ...}
 local tRailsPower = {
 	["carts:rail"] = 0,
 	["carts:powerrail"] = 1,
+	["minecart:rail"] = 0,
+	["minecart:powerrail"] = 1,
 	["carts:brakerail"] = 0,
 }
 -- Real rails from the mod carts
@@ -42,12 +44,16 @@ local tRails = {
 	["carts:rail"] = true,
 	["carts:powerrail"] = true,
 	["carts:brakerail"] = true,
+	["minecart:rail"] = true,
+	["minecart:powerrail"] = true,
 }
 -- Rails plus node carts. Used to find waypoints. Added via add_raillike_nodes
 local tRailsExt = {
 	["carts:rail"] = true,
 	["carts:powerrail"] = true,
 	["carts:brakerail"] = true,
+	["minecart:rail"] = true,
+	["minecart:powerrail"] = true,
 }
 
 local tSigns = {
@@ -58,9 +64,9 @@ local tSigns = {
 }
 
 -- Real rails from the mod carts
-local lRails = {"carts:rail", "carts:powerrail", "carts:brakerail"}
+local lRails = {"carts:rail", "carts:powerrail", "carts:brakerail", "minecart:rail", "minecart:powerrail"}
 -- Rails plus node carts used to find waypoints, , added via add_raillike_nodes
-local lRailsExt = {"carts:rail", "carts:powerrail", "carts:brakerail"}
+local lRailsExt = {"carts:rail", "carts:powerrail", "carts:brakerail", "minecart:rail", "minecart:powerrail"}
 
 minecart.MAX_SPEED = MAX_SPEED
 minecart.lRails = lRails
@@ -130,20 +136,30 @@ local function get_oldmetadata(meta)
 end
 
 local function set_metadata(pos, t)
-	print("set_metadata", P2S(pos))
 	local s = minetest.serialize(t)
-	minetest.swap_node(pos, {name = "carts:brakerail"})
 	M(pos):set_string("waypoints", s)
+	-- debugging
+	--print("set_metadata", P2S(pos))
+	local name = get_node_lvm(pos).name
+	if name == "carts:rail" then
+		minetest.swap_node(pos, {name = "minecart:rail"})
+	elseif name == "carts:powerrail" then
+		minetest.swap_node(pos, {name = "minecart:powerrail"})
+	end
 end
 
 local function del_metadata(pos)
 	local meta = M(pos)
     if meta:contains("waypoints") then
-		print("del_metadata", P2S(pos))
-		if tRails[get_node_lvm(pos).name] then
-			minetest.swap_node(pos, {name = "carts:rail"})
-		end
         meta:set_string("waypoints", "")
+		-- debugging
+		--print("del_metadata", P2S(pos))
+		local name = get_node_lvm(pos).name
+		if name == "minecart:rail" then
+			minetest.swap_node(pos, {name = "carts:rail"})
+		elseif name == "minecart:powerrail" then
+			minetest.swap_node(pos, {name = "carts:powerrail"})
+		end
     end
 end
 
@@ -290,6 +306,7 @@ local function find_all_next_waypoints(pos)
 		local y = check_front_up_down(pos, facedir)
 		if y then
 			local new_pos, is_ramp, speed = find_next_waypoint(pos, facedir, y)
+			--print("find_all_next_waypoints", P2S(new_pos), is_ramp, speed)
 			local dot = 1 + facedir * 4 + y
 			speed = recalc_speed(speed, pos, new_pos, y) * 10
 			wp[facedir] = {dot = dot, pos = new_pos, speed = speed, is_ramp = is_ramp}
@@ -399,6 +416,30 @@ function minecart.delete_waypoint(pos)
 		end
 	end
 end	
+
+carts:register_rail("minecart:rail", {
+	description = "Rail",
+	tiles = {
+		"carts_rail_straight.png^minecart_waypoint.png", "carts_rail_curved.png^minecart_waypoint.png",
+		"carts_rail_t_junction.png^minecart_waypoint.png", "carts_rail_crossing.png^minecart_waypoint.png"
+	},
+	inventory_image = "carts_rail_straight.png",
+	wield_image = "carts_rail_straight.png",
+	groups = carts:get_rail_groups({not_in_creative_inventory = 1}),
+	drop = "carts:rail",
+}, {})
+
+carts:register_rail("minecart:powerrail", {
+	description = "Powered Rail",
+	tiles = {
+		"carts_rail_straight.png^minecart_waypoint.png", "carts_rail_curved.png^minecart_waypoint.png",
+		"carts_rail_t_junction.png^minecart_waypoint.png", "carts_rail_crossing.png^minecart_waypoint.png"
+	},
+	inventory_image = "carts_rail_straight.png",
+	wield_image = "carts_rail_straight.png",
+	groups = carts:get_rail_groups({not_in_creative_inventory = 1}),
+	drop = "carts:powerrail",
+}, {})
 	
 for name,_ in pairs(tRails) do
 	minetest.override_item(name, {
@@ -486,20 +527,13 @@ function minecart.add_raillike_nodes(name)
 	lRailsExt[#lRailsExt + 1] = name
 end
 
--- For debugging purposes
-function minecart.get_waypoints(pos)
---    local hash = P2H(pos)
---	tWaypoints[hash] = tWaypoints[hash] or get_metadata(pos) or determine_waypoints(pos)
---	return tWaypoints[hash]
-end
-
-minetest.register_lbm({
-	label = "Delete waypoints",
-	name = "minecart:del_meta",
-	nodenames = {"carts:brakerail"},
-	run_at_every_load = true,
-	action = function(pos, node)
-		del_metadata(pos)
-	end,
-})
+--minetest.register_lbm({
+--	label = "Delete waypoints",
+--	name = "minecart:del_meta",
+--	nodenames = {"carts:brakerail"},
+--	run_at_every_load = true,
+--	action = function(pos, node)
+--		del_metadata(pos)
+--	end,
+--})
 

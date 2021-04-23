@@ -28,6 +28,12 @@ end
 function minecart.start_nodecart(pos, node_name, puncher)
 	local owner = M(pos):get_string("owner")
 	local userID = M(pos):get_int("userID")
+	-- check if valid cart
+	if not minecart.monitoring_valid_cart(owner, userID, pos, node_name) then
+		M(pos):set_string("infotext", 
+				minetest.get_color_escape_sequence("#FFFF00") .. owner .. ": 0")
+		return
+	end
 	-- Only the owner or a noplayer can start the cart, but owner has to be online
 	if minecart.is_owner(puncher, owner) and minetest.get_player_by_name(owner) and
 			userID ~= 0 then
@@ -47,6 +53,7 @@ end
 function minecart.show_formspec(pos, clicker)
 	local owner = M(pos):get_string("owner")
 	if minecart.is_owner(clicker, owner) then
+		clicker:get_meta():set_string("cart_pos", P2S(pos))
 		minetest.show_formspec(owner, "minecart:userID_node",
 			"size[4,3]" ..
 			"label[0,0;" .. S("Enter cart number") .. ":]" ..
@@ -93,7 +100,7 @@ function minecart.on_nodecart_punch(pos, node, puncher, pointed_thing)
 	if minecart.is_owner(puncher, owner) then
 		if puncher:get_player_control().sneak then
 			local ndef = minetest.registered_nodes[node.name]
-			if not ndef.can_dig or ndef.can_dig(pos, puncher) then
+			if not ndef.has_cargo or not ndef.has_cargo(pos) then
 				minecart.remove_nodecart(pos)
 				minecart.monitoring_remove_cart(owner, userID)
 			end
