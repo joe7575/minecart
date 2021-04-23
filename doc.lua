@@ -29,7 +29,7 @@ local summary_doc = table.concat({
 	S("4. Place a Minecart at a buffer and give it a cart number (1..999)"),
 	S("5. Drive from buffer to buffer in both directions using the Minecart(!) to record the routes (use 'right-left' keys to control the Minecart)."),
 	S("6. Punch the buffers to check the connection data (e.g. 'Oxford: connected to Cambridge')."),
-	S("7. Optional: Configure the Minecart stop time in one or both buffers. The Minecart will then start automatically after the configured time."),
+	S("7. Optional: Configure the Minecart waiting time in both buffers. The Minecart will then start automatically after the configured time."),
 	S("8. Optional: Protect your rail network with the Protection Landmarks (one Landmark at least every 16 nodes/meters)."),
 	S("9. Place a Minecart in front of the buffer and check whether it starts after the configured time."),
 	S("10. Check the cart state via the chat command: /mycart <num>\n   '<num>' is the cart number"),
@@ -45,6 +45,7 @@ local landmark_doc = S("Protect your rails with the Landmarks (one Landmark at l
 
 local hopper_doc = S("Used to load/unload Minecart. The Hopper can push/pull items to/from chests and drop/pickup items to/from Minecarts. To unload a Minecart place the hopper below the rail. To load the Minecart, place the hopper right next to the Minecart.")
 
+local speed_doc = S("Limit the cart speed with speed limit signs")
 
 local function formspec(data)
 	if data.image then
@@ -88,6 +89,11 @@ doc.add_entry("minecart", "buffer", {
 doc.add_entry("minecart", "landmark", {
 	name = S("Minecart Landmark"),
 	data = {text = landmark_doc, item="minecart:landmark"},
+})
+
+doc.add_entry("minecart", "speed signs", {
+	name = S("Minecart Speed Signs"),
+	data = {text = speed_doc, item="minecart:speed4"},
 })
 
 if minecart.hopper_enabled then

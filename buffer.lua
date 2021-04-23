@@ -155,7 +155,8 @@ minetest.register_lbm({
 	nodenames = {"minecart:buffer"},
 	run_at_every_load = false,
 	action = function(pos, node)
-		M(pos):set_int("time", 0)
+		-- delete old data
+		minecart.get_route(pos)
 		M(pos):set_string("formspec", formspec(pos))
 	end,
 })

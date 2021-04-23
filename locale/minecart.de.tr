@@ -1,8 +1,7 @@
 # textdomain: minecart
 Station name=Stationsname
-Stop time/sec=Haltezeit/s
+Waiting time/sec=Wartezeit/s
 connected to=verbunden mit
-Minecart Railway Buffer=Minecart Prellbock
 Summary=Zusammenfassung
 1. Place your rails and build a route with two endpoints. Junctions are allowed as long as each route has its own start and endpoint.=1. Baue eine Schienenstrecke mit zwei Enden. Kreuzungen sind zulässig, solange jede Route ihre eigenen Start- und Endpunkte hat.
 2. Place a Railway Buffer at both endpoints (buffers are always needed, they store the route and timing information).=2. Platziere einen Prellbock an beide Schienenenden (Prellböcke sind zwingend notwendig, sie speichern die Routen- und Zeit-Informationen).
@@ -10,7 +9,7 @@ Summary=Zusammenfassung
 4. Place a Minecart at a buffer and give it a cart number (1..999)=4. Platziere einen Minecart Wagen an einem Prellbock und gib dem Wagen eine Wagennummer (1..999)
 5. Drive from buffer to buffer in both directions using the Minecart(!) to record the routes (use 'right-left' keys to control the Minecart).=5. Um eine Route aufzuzeichnen, fahre die Route in beide Richtungen von Prellbock zu Prellbock mit dem Minecart Wagen(!). Nutze 'links-rechts' Tasten zur Steuerung.
 6. Punch the buffers to check the connection data (e.g. 'Oxford: connected to Cambridge').=6. Schlage auf die Prellböcke um die Verbindungsdaten zu prüfen (bspw.: 'München: verbunden mit Stuttgart')
-7. Optional: Configure the Minecart stop time in one or both buffers. The Minecart will then start automatically after the configured time.=7. Optional: Konfiguriere die Wagenwartezeit in einem oder in beiden Prellböcken. Der Wagen startet dann nach dieser Zeit automatisch.
+7. Optional: Configure the Minecart waiting time in both buffers. The Minecart will then start automatically after the configured time.=7. Optional: Konfiguriere die Wagenwartezeit in beiden Prellböcken. Der Wagen startet dann nach dieser Zeit automatisch.
 8. Optional: Protect your rail network with the Protection Landmarks (one Landmark at least every 16 nodes/meters).=8. Optional: Schütze deine Schienen mit Hilfe der Meilensteine (ein Meilenstein mindestens alle 16 Blöcke).
 9. Place a Minecart in front of the buffer and check whether it starts after the configured time.=9. Platziere einen Wagen direkt vor einem Prellbock und prüfe, ob er nach der konfigurierten Zeit startet.
 10. Check the cart state via the chat command: /mycart <num>@n   '<num>' is the cart number=Prüfe den Status des Wagen mit dem Chat Kommando: /mycart <num>@n    <num> ist die Wagennummer
@@ -20,9 +19,12 @@ Primary used to transport items. You can drop items into the Minecart and punch 
 Used as buffer on both rail ends. Needed to be able to record the cart routes=Preckblöcke müssen an beiden Schienenenden platziert sein, so dass Aufzeichnungen der Strecke gemacht werden können.
 Protect your rails with the Landmarks (one Landmark at least every 16 blocks near the rail)=Schütze deine Schienen mit Hilfe der Meilensteine (ein Meilenstein mindestens alle 16 Blöcke der Strecke entlang)
 Used to load/unload Minecart. The Hopper can push/pull items to/from chests and drop/pickup items to/from Minecarts. To unload a Minecart place the hopper below the rail. To load the Minecart, place the hopper right next to the Minecart.=Um Wagen zu be- und entladen. Der Hopper kann Gegenstände aus Kisten Holen und legen, sowie diese in Wagen fallen lassen bzw. aus Wagen entnehmen. Um einen Wagen zu entladen, muss der Hopper unter die Schiene platziert werden. Um einen Wagen zu beladen, muss der Hopper direkt neben die Schiene platziert werden.
+Limit the cart speed with speed limit signs=Begrenze die Geschwindigkeit der Wagen mit Geschwindigkeitsbegrenzungszeichen
 Minecart=Minecart
 Minecart, the lean railway transportation automation system=Minecart, das schlanke Schienentransport Automatisierungssystem
 Minecart Cart=Wagen
+Minecart Speed Signs=Geschwindigkeitsbegrenzungszeichen
+Minecart Railway Buffer=Minecart Prellbock
 Minecart Hopper=Minecart Hopper
 Minecart (Sneak+Click to pick up)=Minecart (Shift+Klick zum Entfernen des Carts)
 Output cart state and position, or a list of carts, if no cart number is given.=Gibt Status und Position des Wagens, oder eine Liste aller Wagen aus, wenn keine Wagennummer angegeben ist.

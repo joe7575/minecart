@@ -67,7 +67,7 @@ Introduction
 5. Drive from buffer to buffer in both directions using the Minecart(!) to record the 
    routes (use 'right-left' keys to control the Minecart)
 6. Punch the buffers to check the connection data (e.g. "Oxford: connected to Cambridge")
-7. Optional: Configure the Minecart stop time in one or both buffers. The Minecart 
+7. Optional: Configure the Minecart waiting time in both buffers. The Minecart
    will then start automatically after the configured time
 8. Optional: Protect your rail network with the Protection Landmarks (one Landmark 
    at least every 16 nodes/meters)

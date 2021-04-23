@@ -122,9 +122,14 @@ local function has_metadata(pos)
 end
 
 local function get_metadata(pos)
+	local hash = P2H(pos)
+	if tWaypoints[hash] then 
+		return tWaypoints[hash]
+	end
     local s = M(pos):get_string("waypoints")
     if s ~= "" then
-        return minetest.deserialize(s)
+        tWaypoints[hash] = minetest.deserialize(s)
+		return tWaypoints[hash]
     end
 end
 
@@ -136,10 +141,11 @@ local function get_oldmetadata(meta)
 end
 
 local function set_metadata(pos, t)
+	local hash = P2H(pos)
+	tWaypoints[hash] = t
 	local s = minetest.serialize(t)
 	M(pos):set_string("waypoints", s)
-	-- debugging
-	--print("set_metadata", P2S(pos))
+	-- visualization
 	local name = get_node_lvm(pos).name
 	if name == "carts:rail" then
 		minetest.swap_node(pos, {name = "minecart:rail"})
@@ -149,11 +155,12 @@ local function set_metadata(pos, t)
 end
 
 local function del_metadata(pos)
+	local hash = P2H(pos)
+	tWaypoints[hash] = nil
 	local meta = M(pos)
     if meta:contains("waypoints") then
         meta:set_string("waypoints", "")
-		-- debugging
-		--print("del_metadata", P2S(pos))
+		-- visualization
 		local name = get_node_lvm(pos).name
 		if name == "minecart:rail" then
 			minetest.swap_node(pos, {name = "carts:rail"})
