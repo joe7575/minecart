@@ -148,7 +148,7 @@ local function running(self)
 	self.num_sections = (self.num_sections or 0) + 1
 	
 	-- Got stuck somewhere
-	if new_speed < 0.1 or dist < 0.2 then
+	if new_speed < 0.1 or dist < 0 then
 		print("Got stuck somewhere", new_speed, dist)
 		stop_cart(self, wayp_pos)
 		return

@@ -328,8 +328,8 @@ function minecart.entity_to_node(pos, entity)
 	local facedir = minetest.dir_to_facedir(dir)
 	minecart.stop_recording(entity, pos)
 	entity.object:remove()
-	minecart.add_nodecart(pos, entity.node_name, facedir, entity.cargo, entity.owner, entity.userID)
-	minecart.stop_monitoring(entity.owner, entity.userID, pos)
+	local pos2 = minecart.add_nodecart(pos, entity.node_name, facedir, entity.cargo, entity.owner, entity.userID)
+	minecart.stop_monitoring(entity.owner, entity.userID, pos2)
 end
 
 function minecart.add_node_to_player_inventory(pos, player, node_name)

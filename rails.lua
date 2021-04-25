@@ -439,8 +439,8 @@ carts:register_rail("minecart:rail", {
 carts:register_rail("minecart:powerrail", {
 	description = "Powered Rail",
 	tiles = {
-		"carts_rail_straight.png^minecart_waypoint.png", "carts_rail_curved.png^minecart_waypoint.png",
-		"carts_rail_t_junction.png^minecart_waypoint.png", "carts_rail_crossing.png^minecart_waypoint.png"
+		"carts_rail_straight_pwr.png^minecart_waypoint.png", "carts_rail_curved_pwr.png^minecart_waypoint.png",
+		"carts_rail_t_junction_pwr.png^minecart_waypoint.png", "carts_rail_crossing_pwr.png^minecart_waypoint.png"
 	},
 	inventory_image = "carts_rail_straight.png",
 	wield_image = "carts_rail_straight.png",

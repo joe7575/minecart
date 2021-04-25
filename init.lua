@@ -36,7 +36,7 @@ dofile(MP .. "/api.lua")
 dofile(MP .. "/minecart.lua")
 dofile(MP .. "/buffer.lua")
 dofile(MP .. "/protection.lua")
-dofile(MP .. "/tool.lua")
+--dofile(MP .. "/tool.lua")
 dofile(MP .. "/signs.lua")
 dofile(MP .. "/terminal.lua")
 

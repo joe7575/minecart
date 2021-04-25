@@ -68,7 +68,7 @@ register_sign({
 
 register_sign({
 	name = "speed8",
-	description = S('Speed "8"'),
+	description = S('No speed limit'),
 	image = "minecart_sign8.png",
 })
 
