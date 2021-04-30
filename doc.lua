@@ -45,7 +45,24 @@ local landmark_doc = S("Protect your rails with the Landmarks (one Landmark at l
 
 local hopper_doc = S("Used to load/unload Minecart. The Hopper can push/pull items to/from chests and drop/pickup items to/from Minecarts. To unload a Minecart place the hopper below the rail. To load the Minecart, place the hopper right next to the Minecart.")
 
-local speed_doc = S("Limit the cart speed with speed limit signs")
+local speed_doc = S([[Limit the cart speed with speed limit signs.
+
+As before, the speed of the carts is also influenced by power rails.
+Brake rails are irrelevant, the cart does not brake here.
+The maximum speed is 8 m/s. This assumes a ratio of power rails
+to normal rails of 1 to 4 on a flat section of rail. A rail section is a
+series of rail nodes without a change of direction. After every curve / kink,
+the speed for the next section of the route is newly determined,
+taking into account the swing of the cart. This means that a cart can
+roll over short rail sections without power rails.
+
+In order to additionally brake the cart at certain points
+(at switches or in front of a buffer), speed limit signs can be placed
+on the track. With these signs the speed can be reduced to 4, 2, or 1 m / s.
+The "No speed limit" sign can be used to remove the speed limit.
+
+The speed limit signs must be placed next to the track so that they can
+be read from the cart. This allows different speeds in each direction of travel.]])
 
 local function formspec(data)
 	if data.image then

@@ -4,9 +4,9 @@ Minecart
 **Minecart, the lean railway transportation automation system**
 
 
-Browse on: ![GitHub](https://github.com/joe7575/minecart)
+Browse on: [GitHub](https://github.com/joe7575/minecart)
 
-Download: ![GitHub](https://github.com/joe7575/minecart/archive/master.zip)
+Download: [GitHub](https://github.com/joe7575/minecart/archive/master.zip)
 
 ![minecart](https://github.com/joe7575/minecart/blob/master/screenshot.png)
 
@@ -90,6 +90,35 @@ to/from Minecarts. To unload a Minecart place the hopper below the rail.
 To load the Minecart, place the hopper right next to the Minecart.
 
 
+Cart Speed / Speed Limit Signs
+------------------------------
+
+As before, the speed of the carts is also influenced by power rails.
+Brake rails are irrelevant, the cart does not brake here.
+The maximum speed is 8 m/s. This assumes a ratio of power rails
+to normal rails of 1 to 4 on a flat section of rail. A rail section is a
+series of rail nodes without a change of direction. After every curve / kink,
+the speed for the next section of the route is newly determined,
+taking into account the swing of the cart. This means that a cart can
+roll over short rail sections without power rails.
+
+In order to additionally brake the cart at certain points
+(at switches or in front of a buffer), speed limit signs can be placed
+on the track. With these signs the speed can be reduced to 4, 2, or 1 m / s.
+The "No speed limit" sign can be used to remove the speed limit.
+
+The speed limit signs must be placed next to the track so that they can
+be read from the cart. This allows different speeds in each direction of travel.
+
+
+Migration to v2
+---------------
+
+The way how carts are monitored and the cart speed is calculated has changed.
+Therefore, it is necessary that all carts are repositioned and the
+recording is repeated.
+Rails and buffers are not affected and can be kept unchanged.
+
 
 History
 -------
@@ -112,4 +141,5 @@ History
 2020-07-24  V1.08  Adapted to new techage ICTA style  
 2020-08-14  V1.09  Hopper support for digtron, protector:chest and default:furnace added    
 2020-11-12  V1.10  Make carts more robust against server lag
-2021-04-10  V2.00  Complete revision to make carts robust against server load/lag
+2021-04-10  V2.00  Complete revision to make carts robust against server load/lag,
+                   Speed limit signs and cart terminal added
