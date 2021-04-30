@@ -18,6 +18,7 @@ local dot2dir = minecart.dot2dir
 local get_waypoint = minecart.get_waypoint
 local recording_waypoints = minecart.recording_waypoints
 local recording_junctions = minecart.recording_junctions
+local set_junctions = minecart.set_junctions
 local player_ctrl = minecart.player_ctrl
 local tEntityNames = minecart.tEntityNames
 
@@ -108,6 +109,9 @@ local function running(self)
 	end
 	
 	if is_junction then
+		if self.is_recording then
+			set_junctions(self, wayp_pos)
+		end
 		self.ctrl = nil
 	end
 	

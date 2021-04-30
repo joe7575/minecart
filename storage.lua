@@ -15,6 +15,7 @@ local M = minetest.get_meta
 local P2S = function(pos) if pos then return minetest.pos_to_string(pos) end end
 local S2P = minetest.string_to_pos
 local P2H = minetest.hash_node_position
+local H2P = minetest.get_position_from_hash
 local S = minecart.S
 
 local storage = minetest.get_mod_storage()

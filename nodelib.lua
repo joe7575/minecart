@@ -30,7 +30,7 @@ function minecart.start_nodecart(pos, node_name, puncher)
 	local userID = M(pos):get_int("userID")
 	-- check if valid cart
 	if not minecart.monitoring_valid_cart(owner, userID, pos, node_name) then
-		print("invalid cart", owner, userID, pos, node_name)
+		--print("invalid cart", owner, userID, P2S(pos), node_name)
 		M(pos):set_string("infotext", 
 				minetest.get_color_escape_sequence("#FFFF00") .. owner .. ": 0")
 		return

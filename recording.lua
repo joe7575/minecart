@@ -147,22 +147,26 @@ function minecart.recording_waypoints(self)
 	}
 end
 
-function minecart.recording_junctions(self, speed)
+function minecart.recording_junctions(self)
 	local player = minetest.get_player_by_name(self.driver)
 	if player then
 		local ctrl = player:get_player_control()
 		if ctrl.left then
 			self.ctrl = {left = true}
-			self.junctions[P2H(self.waypoint.pos)] = self.ctrl
 		elseif ctrl.right then
 			self.ctrl = {right = true}
-			self.junctions[P2H(self.waypoint.pos)] = self.ctrl
 		end
 	end
 	if self.hud_time <= self.timebase then
 		dashboard_update(self)
 		self.hud_time = self.timebase + 0.5
 		self.runtime = self.runtime + 0.5
+	end
+end
+
+function minecart.set_junctions(self, wayp_pos)
+	if self.ctrl then
+		self.junctions[P2H(wayp_pos)] = self.ctrl
 	end
 end
 
