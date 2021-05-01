@@ -33,7 +33,7 @@ end
 function minecart.punch_cart(pos, param2, radius, punch_dir)
 	local pos2, node = minecart.get_nodecart_nearby(pos, param2, radius)	
 	if pos2 then
-		minecart.start_nodecart(pos2, node.name)
+		minecart.start_nodecart(pos2, node.name, nil, punch_dir)
 		return true
 	end
 	-- The entity check is needed for a cart with driver

@@ -25,7 +25,7 @@ function minecart.get_nodecart_nearby(pos, param2, radius)
 end
 
 -- Convert node to entity and start cart
-function minecart.start_nodecart(pos, node_name, puncher)
+function minecart.start_nodecart(pos, node_name, puncher, punch_dir)
 	local owner = M(pos):get_string("owner")
 	local userID = M(pos):get_int("userID")
 	-- check if valid cart
@@ -44,6 +44,9 @@ function minecart.start_nodecart(pos, node_name, puncher)
 			local entity = obj:get_luaentity()
 			if puncher then
 				local yaw = puncher:get_look_horizontal()
+				entity.object:set_rotation({x = 0, y = yaw, z = 0})
+			elseif punch_dir then
+				local yaw = minetest.dir_to_yaw(punch_dir)
 				entity.object:set_rotation({x = 0, y = yaw, z = 0})
 			end
 			 minecart.start_entitycart(entity, pos)

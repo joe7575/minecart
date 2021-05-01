@@ -155,6 +155,8 @@ function minecart.recording_junctions(self)
 			self.ctrl = {left = true}
 		elseif ctrl.right then
 			self.ctrl = {right = true}
+		elseif ctrl.up or ctrl.down then
+			self.ctrl = nil
 		end
 	end
 	if self.hud_time <= self.timebase then

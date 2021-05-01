@@ -90,6 +90,13 @@ to/from Minecarts. To unload a Minecart place the hopper below the rail.
 To load the Minecart, place the hopper right next to the Minecart.
 
 
+Cart Pusher
+-----------
+
+Used to push a cart if the cart does not stop directly at a buffer.
+The block has to be placed below the rail.
+
+
 Cart Speed / Speed Limit Signs
 ------------------------------
 

@@ -3,7 +3,7 @@
 	Minecart
 	========
 
-	Copyright (C) 2019-2020 Joachim Stolberg
+	Copyright (C) 2019-2021 Joachim Stolberg
 
 	MIT
 	See license.txt for more information
@@ -44,6 +44,8 @@ local buffer_doc = S("Used as buffer on both rail ends. Needed to be able to rec
 local landmark_doc = S("Protect your rails with the Landmarks (one Landmark at least every 16 blocks near the rail)")
 
 local hopper_doc = S("Used to load/unload Minecart. The Hopper can push/pull items to/from chests and drop/pickup items to/from Minecarts. To unload a Minecart place the hopper below the rail. To load the Minecart, place the hopper right next to the Minecart.")
+
+local pusher_doc = S("Used to push a cart if the cart does not stop directly at a buffer. Block has to be placed below the rail.")
 
 local speed_doc = S([[Limit the cart speed with speed limit signs.
 
