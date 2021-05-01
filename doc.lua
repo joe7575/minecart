@@ -45,7 +45,10 @@ local landmark_doc = S("Protect your rails with the Landmarks (one Landmark at l
 
 local hopper_doc = S("Used to load/unload Minecart. The Hopper can push/pull items to/from chests and drop/pickup items to/from Minecarts. To unload a Minecart place the hopper below the rail. To load the Minecart, place the hopper right next to the Minecart.")
 
-local pusher_doc = S("Used to push a cart if the cart does not stop directly at a buffer. Block has to be placed below the rail.")
+local pusher_doc = S([[If several carts are running on one route,
+it can happen that a buffer position is already occupied and one cart therefore stops earlier.
+In this case, the cart pusher is used to push the cart towards the buffer again.
+This block must be placed under the rail at a distance of 2 m in front of the buffer.]])
 
 local speed_doc = S([[Limit the cart speed with speed limit signs.
 
@@ -113,6 +116,11 @@ doc.add_entry("minecart", "landmark", {
 doc.add_entry("minecart", "speed signs", {
 	name = S("Minecart Speed Signs"),
 	data = {text = speed_doc, item="minecart:speed4"},
+})
+
+doc.add_entry("minecart", "cart pusher", {
+	name = S("Cart Pusher"),
+	data = {text = pusher_doc, item="minecart:cart_pusher"},
 })
 
 if minecart.hopper_enabled then
