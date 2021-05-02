@@ -170,11 +170,13 @@ local function play_sound(self)
 		self.sound_handle = nil
 		minetest.after(0.2, minetest.sound_stop, handle)
 	end
-	self.sound_handle = minetest.sound_play(
-		"carts_cart_moving", {
-		object = self.object,
-		gain = self.curr_speed / MAX_SPEED,
-	})
+	if self.object then
+		self.sound_handle = minetest.sound_play(
+			"carts_cart_moving", {
+			object = self.object,
+			gain = self.curr_speed / MAX_SPEED,
+		})
+	end
 end
 
 local function on_step(self, dtime)

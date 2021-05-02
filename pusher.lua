@@ -17,8 +17,7 @@ local CYCLE_TIME = 4
 
 local function node_timer(pos)
 	local node = minetest.get_node(pos)
-	local dir = minetest.facedir_to_dir((node.param2) % 4)
-	print(minetest.pos_to_string(dir))
+	local dir = minetest.facedir_to_dir(node.param2)
 	minecart.punch_cart({x = pos.x, y = pos.y + 1, z = pos.z}, nil, 1, dir)
 	return true
 end
