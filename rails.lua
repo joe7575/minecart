@@ -460,28 +460,30 @@ end
 -------------------------------------------------------------------------------
 -- Return new cart pos and if an extra move cycle is needed
 function minecart.get_current_cart_pos_correction(curr_pos, curr_fd, curr_y, new_dot)
-	local new_y = (new_dot % 4) - 1
-	local new_fd = math.floor(new_dot / 4)
-	
-	if curr_y == -1 or new_y == -1 then
+	if new_dot then
+		local new_y = (new_dot % 4) - 1
 		local new_fd = math.floor(new_dot / 4)
-		local dir = facedir2dir(new_fd)
-		return {
-			x = curr_pos.x + dir.x / 2,
-			y = curr_pos.y,
-			z = curr_pos.z + dir.z / 2}, new_y == -1
-	elseif curr_y == 1 and curr_fd ~= new_fd then
-		local dir = facedir2dir(new_fd)
-		return {
-			x = curr_pos.x + dir.x / 2,
-			y = curr_pos.y,
-			z = curr_pos.z + dir.z / 2}, true
-	elseif curr_y == 1 or new_y == 1 then
-		local dir = facedir2dir(curr_fd)
-		return {
-			x = curr_pos.x - dir.x / 2,
-			y = curr_pos.y,
-			z = curr_pos.z - dir.z / 2}, false
+		
+		if curr_y == -1 or new_y == -1 then
+			local new_fd = math.floor(new_dot / 4)
+			local dir = facedir2dir(new_fd)
+			return {
+				x = curr_pos.x + dir.x / 2,
+				y = curr_pos.y,
+				z = curr_pos.z + dir.z / 2}, new_y == -1
+		elseif curr_y == 1 and curr_fd ~= new_fd then
+			local dir = facedir2dir(new_fd)
+			return {
+				x = curr_pos.x + dir.x / 2,
+				y = curr_pos.y,
+				z = curr_pos.z + dir.z / 2}, true
+		elseif curr_y == 1 or new_y == 1 then
+			local dir = facedir2dir(curr_fd)
+			return {
+				x = curr_pos.x - dir.x / 2,
+				y = curr_pos.y,
+				z = curr_pos.z - dir.z / 2}, false
+		end
 	end
 	return curr_pos, false
 end

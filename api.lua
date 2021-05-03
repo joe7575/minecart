@@ -28,6 +28,13 @@ function minecart.is_cart_available(pos, param2, radius)
 	end
 end	
 
+function minecart.is_nodecart_available(pos, param2, radius)
+	local pos2 = minecart.get_nodecart_nearby(pos, param2, radius)	
+	if pos2 then
+		return true
+	end
+end	
+
 -- 'pos' is the position of the puncher/sensor, the cart
 -- position will be determined by means of 'param2' and 'radius'
 function minecart.punch_cart(pos, param2, radius, punch_dir)

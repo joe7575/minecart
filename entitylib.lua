@@ -127,7 +127,7 @@ local function running(self)
 	new_speed = math.min(new_speed, self.speed_limit)
 	
 	local new_cart_pos, extra_cycle = minecart.get_current_cart_pos_correction(
-			wayp_pos, facedir, dir.y, self.waypoint.dot)
+			wayp_pos, facedir, dir.y, self.waypoint.dot)  -- TODO: Why has self.waypoint no dot?
 	if extra_cycle and not vector.equals(cart_pos, new_cart_pos) then
 		self.waypoint = {pos = wayp_pos, cart_pos = new_cart_pos}
 		new_dir = vector.direction(cart_pos, new_cart_pos)

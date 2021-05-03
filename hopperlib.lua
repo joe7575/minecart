@@ -69,7 +69,7 @@ function minecart.put_items(pos, param2, stack)
 		end
 	elseif def and def.put_item then
 		return def.put_item(npos, stack, owner)
-	elseif minecart.is_air_like(node.name) or minecart.is_cart_available(npos) then
+	elseif minecart.is_air_like(node.name) or minecart.is_nodecart_available(npos) then
 		minetest.add_item(npos, stack)
 	else
 		local ndef = minetest.registered_nodes[node.name]
