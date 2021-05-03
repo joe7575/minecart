@@ -258,8 +258,8 @@ local function on_entitycard_rightclick(self, clicker)
 		if self.driver then
 			-- get off
 			local pos = vector.round(self.object:get_pos())
-			minecart.stop_recording(self, pos)	
 			minecart.manage_attachment(clicker, self, false)
+			minecart.entity_to_node(pos, self)
 		else
 			-- get on
 			local pos = vector.round(self.object:get_pos())
