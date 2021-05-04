@@ -13,6 +13,8 @@
 local P2S = function(pos) if pos then return minetest.pos_to_string(pos) end end
 local P2H = minetest.hash_node_position
 local H2P = minetest.get_position_from_hash
+local LEN = function(t) local c = 0; for _ in pairs(t) do c = c + 1 end; return c; end
+
 local MAX_SPEED = minecart.MAX_SPEED
 local dot2dir = minecart.dot2dir
 local get_waypoint = minecart.get_waypoint
@@ -115,7 +117,7 @@ local function running(self)
 		self.ctrl = nil
 	end
 	
-	--print("dist", P2S(cart_pos), P2S(self.waypoint.pos), P2S(self.waypoint.cart_pos), self.waypoint.dot)
+	--print("running", LEN(self.junctions))
 	local dist = vector.distance(cart_pos, self.waypoint.cart_pos or self.waypoint.pos)
 	local new_dir = dot2dir(self.waypoint.dot)
 	local new_speed = new_speed(self, new_dir)
