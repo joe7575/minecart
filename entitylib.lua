@@ -73,7 +73,14 @@ local function running(self)
 	local dir = minetest.yaw_to_dir(rot.y)
 	dir.y = math.floor((rot.x / (math.pi/4)) + 0.5)
 	dir = vector.round(dir)
-	local facedir = minetest.dir_to_facedir(dir)
+	-- If running in a 45 degree direction (extra cycle), use the old dir
+	-- to calculate face_dir. Otherwise the junction detection will not work as expected.
+	local facedir
+	if self.waypoint and self.waypoint.old_dir then
+		facedir = minetest.dir_to_facedir(self.waypoint.old_dir)
+	else
+		facedir = minetest.dir_to_facedir(dir)
+	end
 	local cart_pos, wayp_pos, is_junction
 	
 	if self.reenter then -- through monitoring
@@ -131,7 +138,7 @@ local function running(self)
 	local new_cart_pos, extra_cycle = minecart.get_current_cart_pos_correction(
 			wayp_pos, facedir, dir.y, self.waypoint.dot)  -- TODO: Why has self.waypoint no dot?
 	if extra_cycle and not vector.equals(cart_pos, new_cart_pos) then
-		self.waypoint = {pos = wayp_pos, cart_pos = new_cart_pos}
+		self.waypoint = {pos = wayp_pos, cart_pos = new_cart_pos, old_dir = vector.new(dir)}
 		new_dir = vector.direction(cart_pos, new_cart_pos)
 		dist = vector.distance(cart_pos, new_cart_pos)
 		--print("extra_cycle", P2S(cart_pos), P2S(wayp_pos), P2S(new_cart_pos), new_speed)
