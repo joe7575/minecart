@@ -96,7 +96,7 @@ function minecart.set_marker(pos, text, size, ttl)
 	end
 end
 
-minetest.register_entity(":minecart:marker_cube", {
+minetest.register_entity("minecart:marker_cube", {
 	initial_properties = {
 		visual = "cube",
 		textures = {
@@ -111,6 +111,41 @@ minetest.register_entity(":minecart:marker_cube", {
 		visual_size = {x = 1, y = 1},
 		collisionbox = {-0.25,-0.25,-0.25, 0.25,0.25,0.25},
 		glow = 8,
+		static_save = false,
+	},
+	on_punch = function(self)
+		self.object:remove()
+	end,
+})
+
+function minecart.set_land_marker(pos, radius, ttl)
+	local offs = radius + 0.5
+	local posses = {
+		{x = pos.x + offs, y = pos.y, z=pos.z},
+		{x = pos.x, y = pos.y, z=pos.z + offs},
+		{x = pos.x - offs, y = pos.y, z=pos.z},
+		{x = pos.x, y = pos.y, z=pos.z - offs},
+	}
+	for i, pos in ipairs(posses) do
+		local marker = minetest.add_entity(pos, "minecart:marker")
+		if marker ~= nil then
+			marker:set_properties({
+				visual_size = {x = 2 * offs, y = 2 * offs},
+				collisionbox = {-offs, -offs, 0, offs, offs, 0},
+			})
+			marker:set_yaw(math.pi / 2 * i)
+			minetest.after(ttl, marker.remove, marker)
+		end
+	end
+end
+
+minetest.register_entity("minecart:marker", {
+	initial_properties = {
+		visual = "upright_sprite",   
+		textures = {"minecart_marker_cube.png"},
+		use_texture_alpha = true,     
+		physical = false,
+		glow = 12,
 		static_save = false,
 	},
 	on_punch = function(self)
