@@ -183,7 +183,7 @@ local function play_sound(self)
 		self.sound_handle = minetest.sound_play(
 			"carts_cart_moving", {
 			object = self.object,
-			gain = self.curr_speed / MAX_SPEED,
+			gain = (self.curr_speed or 0) / MAX_SPEED,
 		})
 	end
 end
