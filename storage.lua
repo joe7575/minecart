@@ -52,7 +52,7 @@ minetest.register_on_mods_loaded(function()
 		for owner, carts in pairs(t) do
 			minecart.CartsOnRail[owner] = {}
 			for userID, cart in pairs(carts) do
-     				print("reload cart", owner, userID, cart.objID)
+				print("reload cart", owner, userID, cart.objID)
 				minecart.CartsOnRail[owner][userID] = cart
 				-- mark all entity carts as zombified
 				if cart.objID and cart.objID ~= 0 then

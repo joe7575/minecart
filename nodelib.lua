@@ -30,10 +30,15 @@ function minecart.start_nodecart(pos, node_name, puncher, punch_dir)
 	local userID = M(pos):get_int("userID")
 	-- check if valid cart
 	if not minecart.monitoring_valid_cart(owner, userID, pos, node_name) then
-		--print("invalid cart", owner, userID, P2S(pos), node_name)
-		M(pos):set_string("infotext", 
-				minetest.get_color_escape_sequence("#FFFF00") .. owner .. ": 0")
-		return
+		--print("Lost cart", owner, userID, P2S(pos), node_name)
+		local entity_name = minecart.tNodeNames[node_name]
+		if owner ~= "" and userID ~= "" and entity_name then
+			minecart.monitoring_add_cart(owner, userID, pos, node_name, entity_name)
+		else
+			M(pos):set_string("infotext", 
+					minetest.get_color_escape_sequence("#FFFF00") .. owner .. ": 0")
+			return
+		end
 	end
 	-- Only the owner or a noplayer can start the cart, but owner has to be online
 	if minecart.is_owner(puncher, owner) and minetest.get_player_by_name(owner) and
