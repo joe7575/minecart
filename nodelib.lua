@@ -47,14 +47,19 @@ function minecart.start_nodecart(pos, node_name, puncher, punch_dir)
 		local obj = minecart.node_to_entity(pos, node_name, entity_name)
 		if obj then
 			local entity = obj:get_luaentity()
+			local facedir
+			
 			if puncher then
 				local yaw = puncher:get_look_horizontal()
 				entity.object:set_rotation({x = 0, y = yaw, z = 0})
+				local dir = minetest.yaw_to_dir(yaw)
+				facedir = minetest.dir_to_facedir(dir)
 			elseif punch_dir then
 				local yaw = minetest.dir_to_yaw(punch_dir)
 				entity.object:set_rotation({x = 0, y = yaw, z = 0})
+				facedir = minetest.dir_to_facedir(punch_dir)
 			end
-			 minecart.start_entitycart(entity, pos)
+			minecart.start_entitycart(entity, pos, facedir or 0)
 		end
 	end
 end

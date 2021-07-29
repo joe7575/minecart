@@ -252,9 +252,11 @@ local function on_entitycard_punch(self, puncher, time_from_last_punch, tool_cap
 			local pos = vector.round(self.object:get_pos())
 			if puncher then
 				local yaw = puncher:get_look_horizontal()
+				dir = minetest.yaw_to_dir(yaw)
 				self.object:set_rotation({x = 0, y = yaw, z = 0})
 			end
-			minecart.start_entitycart(self, pos)
+			local facedir = minetest.dir_to_facedir(dir or {x=0, y=0, z=0})
+			minecart.start_entitycart(self, pos, facedir or 0)
 			minecart.start_recording(self, pos) 
 		end
 	end

@@ -75,7 +75,8 @@ function minecart.find_node_near_lvm(pos, radius, items)
 		for y = pos1.y, pos2.y do
 			for z = pos1.z, pos2.z do
 				local idx = area:indexp({x = x, y = y, z = z})
-				if minetest.get_name_from_content_id(data[idx]) then
+				local name = minetest.get_name_from_content_id(data[idx])
+				if name and tItems[name] then
 					return {x = x, y = y, z = z}
 				end
 			end
@@ -305,12 +306,12 @@ function minecart.add_entitycart(pos, node_name, entity_name, vel, cargo, owner,
 	end
 end
 
-function minecart.start_entitycart(self, pos)
+function minecart.start_entitycart(self, pos, facedir)
 	local route = {}
 	
 	self.is_running = true
 	self.arrival_time = 0
-	self.start_pos = minecart.get_buffer_pos(pos, self.owner)
+	self.start_pos = minecart.get_buffer_pos(pos, self.owner) or minecart.get_next_buffer(pos, facedir)
 	if self.start_pos then
 		-- Read buffer route for the junction info
 		route = minecart.get_route(self.start_pos) or {}
