@@ -2,6 +2,7 @@
 Station name=
 Waiting time/sec=
 connected to=
+Not connected!=
 Summary=
 1. Place your rails and build a route with two endpoints. Junctions are allowed as long as each route has its own start and endpoint.=
 2. Place a Railway Buffer at both endpoints (buffers are always needed, they store the route and timing information).=
@@ -28,7 +29,6 @@ Limit the cart speed with speed limit signs.@n@nAs before, the speed of the cart
 Minecart Railway Buffer=
 Minecart Hopper=
 Minecart Landmark=
-Cart Pusher=
 Minecart (Sneak+Click to pick up)=
 Output cart state and position, or a list of carts, if no cart number is given.=
 List of carts=
@@ -36,6 +36,7 @@ Enter cart number=
 Save=
 [minecart] Area is protected!=
 Allow to dig/place rails in Minecart Landmark areas=
+Cart Pusher=
 left=
 right=
 straight=

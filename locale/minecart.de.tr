@@ -2,6 +2,7 @@
 Station name=Stationsname
 Waiting time/sec=Wartezeit/s
 connected to=verbunden mit
+Not connected!=Nicht verbunden!
 Summary=Zusammenfassung
 1. Place your rails and build a route with two endpoints. Junctions are allowed as long as each route has its own start and endpoint.=1. Baue eine Schienenstrecke mit zwei Enden. Kreuzungen sind zulässig, solange jede Route ihre eigenen Start- und Endpunkte hat.
 2. Place a Railway Buffer at both endpoints (buffers are always needed, they store the route and timing information).=2. Platziere einen Prellbock an beide Schienenenden (Prellböcke sind zwingend notwendig, sie speichern die Routen- und Zeit-Informationen).
@@ -28,7 +29,6 @@ Limit the cart speed with speed limit signs.@n@nAs before, the speed of the cart
 Minecart Railway Buffer=Minecart Prellbock
 Minecart Hopper=Minecart Hopper
 Minecart Landmark=Minecart Meilenstein
-Cart Pusher=Wagen Anschieber
 Minecart (Sneak+Click to pick up)=Minecart (Shift+Klick zum Entfernen des Carts)
 Output cart state and position, or a list of carts, if no cart number is given.=Gibt Status und Position des Wagens, oder eine Liste aller Wagen aus, wenn keine Wagennummer angegeben ist.
 List of carts=Liste aller Wagen
@@ -36,6 +36,7 @@ Enter cart number=Gebe Cart Nummer ein
 Save=Speichern
 [minecart] Area is protected!=[minecart] Bereich ist geschützt!
 Allow to dig/place rails in Minecart Landmark areas=Erlaubt dir, Schienen in Meilensteinbereichen zu setzen/zu entfernen
+Cart Pusher=Wagen Anschieber
 left=links
 right=rechts
 straight=geradeaus
