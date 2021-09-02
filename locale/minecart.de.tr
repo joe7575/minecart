@@ -35,6 +35,9 @@ Minecart (Sneak+Click to pick up)=Minecart (Shift+Klick zum Entfernen des Carts)
 Output cart state and position, or a list of carts, if no cart number is given.=Gibt Status und Position des Wagens, oder eine Liste aller Wagen aus, wenn keine Wagennummer angegeben ist.
 List of carts=Liste aller Wagen
 Stop amd return a missing/running cart.=Stoppe und hole einen vermissten Wagen zurück.
+Cart=Wagen
+stopped=gestoppt
+is not existing!=existiert nicht!
 Enter cart number=Gebe Cart Nummer ein
 Save=Speichern
 [minecart] Area is protected!=[minecart] Bereich ist geschützt!
@@ -55,8 +58,3 @@ Speed "4"=Tempo "4"
 No speed limit=Keine Geschwindigkeitsbegrenzung
 Cart List=Cart Liste
 Cart Terminal=Cart Terminal
-
-
-##### not used anymore #####
-
-Used to push a cart if the cart does not stop directly at a buffer. Block has to be placed below the rail.=Wird verwendet, um einen Wagen anzuschieben, wenn der Wagen nicht direkt an einem Puffer anhält. Der Block muss unter der Schiene platziert werden.

@@ -251,17 +251,21 @@ minetest.register_chatcommand("stopcart", {
 		local player_pos = minetest.get_player_by_name(owner):get_pos()
 		if userID then
 			local data = minecart.get_cart_monitoring_data(owner, userID)
-			if data.objID and data.objID ~= 0 then
-				local entity = minetest.luaentities[data.objID]
-				if entity then  -- cart entity running
-					minecart.entity_to_node(player_pos, entity)
+			if data then
+				if data.objID and data.objID ~= 0 then
+					local entity = minetest.luaentities[data.objID]
+					if entity then  -- cart entity running
+						minecart.entity_to_node(player_pos, entity)
+					end
+				else
+					local pos = data.last_pos or data.pos
+					local cargo, owner, userID = minecart.remove_nodecart(pos)
+					minecart.add_nodecart(player_pos, data.node_name, 0, cargo, owner, userID)
 				end
+				return true, S("Cart") .. " " .. userID .. " " .. S("stopped")
 			else
-				local pos = data.last_pos or data.pos
-				local cargo, owner, userID = minecart.remove_nodecart(pos)
-				minecart.add_nodecart(player_pos, data.node_name, 0, cargo, owner, userID)
+				return false, S("Cart") .. " " .. userID .. " " .. S("is not existing!")
 			end
-			return true
 		end
     end
 })
