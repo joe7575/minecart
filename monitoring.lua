@@ -243,6 +243,29 @@ minetest.register_chatcommand("mycart", {
     end
 })
 
+minetest.register_chatcommand("stopcart", {
+	params = "<cart-num>",
+	description = S("Stop amd return a missing/running cart."),
+    func = function(owner, param)
+		local userID = tonumber(param)
+		local player_pos = minetest.get_player_by_name(owner):get_pos()
+		if userID then
+			local data = minecart.get_cart_monitoring_data(owner, userID)
+			if data.objID and data.objID ~= 0 then
+				local entity = minetest.luaentities[data.objID]
+				if entity then  -- cart entity running
+					minecart.entity_to_node(player_pos, entity)
+				end
+			else
+				local pos = data.last_pos or data.pos
+				local cargo, owner, userID = minecart.remove_nodecart(pos)
+				minecart.add_nodecart(player_pos, data.node_name, 0, cargo, owner, userID)
+			end
+			return true
+		end
+    end
+})
+
 function minecart.cmnd_cart_state(name, userID)
 	local state, loc = get_cart_state_and_loc(name, userID, {x=0, y=0, z=0})
 	return state
