@@ -366,6 +366,7 @@ function minecart.entity_to_node(pos, entity)
 	entity.object:remove()
 	local pos2 = minecart.add_nodecart(pos, entity.node_name, facedir, entity.cargo, entity.owner, entity.userID)
 	minecart.stop_monitoring(entity.owner, entity.userID, pos2)
+	minecart.monitoring_remove_cart(entity.owner, entity.userID)
 end
 
 function minecart.add_node_to_player_inventory(pos, player, node_name)
