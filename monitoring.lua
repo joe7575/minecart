@@ -153,7 +153,7 @@ local function monitoring(cycle)
 				local pos = cart.last_pos or cart.pos
 				pos = minecart.add_nodecart(pos, cart.node_name, 0, cart.cargo, cart.owner, cart.userID)
 				minecart.stop_monitoring(cart.owner, cart.userID, pos)
-				logging(cart, "stopped at " .. P2S(pos))
+				logging(cart, "stopped at " .. (P2S(pos) or "unknown"))
 			end
 		elseif not cart.objID and tCartsOnRail[cart.owner] then
 			-- Delete carts marked as "to be deleted"
