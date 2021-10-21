@@ -78,13 +78,15 @@ local function get_cart_state_and_loc(name, userID, query_pos)
 	if tCartsOnRail[name] and tCartsOnRail[name][userID] then
 		local cart = tCartsOnRail[name][userID]
 		local pos = cart.last_pos or cart.pos
-		local loc = minecart.get_buffer_name(cart.pos) or
-				math.floor(vector.distance(pos, query_pos))
-		if cart.objID == 0 then
-			return "stopped",  minecart.get_buffer_name(cart.pos) or
-					math.floor(vector.distance(pos, query_pos)), cart.node_name
-		else
-			return "running", math.floor(vector.distance(pos, query_pos)), cart.node_name
+		if pos then
+			local loc = minecart.get_buffer_name(cart.pos) or
+					math.floor(vector.distance(pos, query_pos))
+			if cart.objID == 0 then
+				return "stopped",  minecart.get_buffer_name(cart.pos) or
+						math.floor(vector.distance(pos, query_pos)), cart.node_name
+			else
+				return "running", math.floor(vector.distance(pos, query_pos)), cart.node_name
+			end
 		end
 	end
 	return "unknown", 0, "unknown"
