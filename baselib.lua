@@ -144,7 +144,7 @@ minetest.register_entity("minecart:marker", {
 	initial_properties = {
 		visual = "upright_sprite",   
 		textures = {"minecart_marker_cube.png"},
-		use_texture_alpha = true,     
+		use_texture_alpha = minecart.CLIP,
 		physical = false,
 		glow = 12,
 		static_save = false,
