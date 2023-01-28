@@ -15,7 +15,7 @@ local minecart_lib = [[
 // from running carts. To do this, a cart terminal
 // must be connected to an I/O Module.
 
-import "lib/ta_iom.c"
+import "lib/techage.c"
 
 var payload[1];
 var resp[1];
