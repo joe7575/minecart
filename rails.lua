@@ -572,8 +572,8 @@ function minecart.delete_signs_waypoint(pos)
 	end
 end
 
-function minecart.is_rail(pos, node)
-	return tRails[node or get_node_lvm(pos).name] ~= nil
+function minecart.is_rail(pos, name)
+	return tRails[name or get_node_lvm(pos).name] ~= nil
 end
 
 -- To register node cart names
