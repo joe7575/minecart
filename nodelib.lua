@@ -108,10 +108,10 @@ end
 
 -- Start the node cart (or dig by shift+leftclick)
 function minecart.on_nodecart_punch(pos, node, puncher, pointed_thing)
-	--print("on_nodecart_punch")
 	local owner = M(pos):get_string("owner")
+	local rail = M(pos):get_string("removed_rail")
 	if minecart.is_owner(puncher, owner) then
-		if puncher:get_player_control().sneak then
+		if puncher:get_player_control().sneak or not minecart.is_rail(pos, rail) then
 			local ndef = minetest.registered_nodes[node.name]
 			if not ndef.has_cargo or not ndef.has_cargo(pos) then
 				local _, owner, userID = minecart.remove_nodecart(pos, node)

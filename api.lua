@@ -65,14 +65,19 @@ end
 
 -- Place and start the cart
 function minecart.place_and_start_cart(pos, node, cartdef, player)
-	local vel = {x = 0, y = 0, z = 0}
-	local entity_name = minecart.tNodeNames[node.name]
-	local obj = minecart.add_entitycart(pos, node.name, entity_name, vel,
-		cartdef.cargo, cartdef.owner, cartdef.userID)
-	local entity = obj:get_luaentity()
-	minecart.monitoring_add_cart(cartdef.owner, cartdef.userID, pos, node.name, entity_name)
-	if player then
-		minecart.manage_attachment(player, entity, true)
+	local name = minecart.get_node_lvm(pos).name
+	if minecart.is_rail(pos, name) or minecart.is_cart(name) then
+		local vel = {x = 0, y = 0, z = 0}
+		local entity_name = minecart.tNodeNames[node.name]
+		local obj = minecart.add_entitycart(pos, node.name, entity_name, vel,
+			cartdef.cargo, cartdef.owner, cartdef.userID)
+		local entity = obj:get_luaentity()
+		minecart.monitoring_add_cart(cartdef.owner, cartdef.userID, pos, node.name, entity_name)
+		if player then
+			minecart.manage_attachment(player, entity, true)
+		end
+		minecart.start_entitycart(entity, pos, 0)
+	else
+		minecart.add_nodecart(pos, node.name, node.param2, cartdef.cargo, cartdef.owner, cartdef.userID, true)
 	end
-	minecart.start_entitycart(entity, pos, 0)
 end

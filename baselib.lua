@@ -254,10 +254,12 @@ function minecart.register_cart_names(node_name, entity_name, cart_type)
 	minecart.tCartTypes[node_name] = cart_type
 end
 
-function minecart.add_nodecart(pos, node_name, param2, cargo, owner, userID)
+function minecart.add_nodecart(pos, node_name, param2, cargo, owner, userID, force)
 	if pos and node_name and param2 and cargo and owner and userID then
 		local pos2
-		if not minecart.is_rail(pos) then
+		if force then
+			pos2 = pos
+		elseif not minecart.is_rail(pos) then
 			pos2 = minetest.find_node_near(pos, 1, minecart.lRails)
 			if not pos2 or not minecart.is_rail(pos2) then
 				-- If no rail is around, use an available cart as new search center
@@ -273,10 +275,10 @@ function minecart.add_nodecart(pos, node_name, param2, cargo, owner, userID)
 		if pos2 then
 			local node = minetest.get_node(pos2)
 			local ndef = minetest.registered_nodes[node_name]
-			local rail = node.name
 			minetest.swap_node(pos2, {name = node_name, param2 = param2})
 			local meta = M(pos2)
-			meta:set_string("removed_rail", rail)
+			meta:set_string("removed_rail", node.name)
+			meta:set_string("removed_rail_param2", node.param2)
 			meta:set_string("owner", owner)
 			meta:set_int("userID", userID)
 			meta:set_string("infotext", owner .. ": " .. userID)
@@ -334,13 +336,14 @@ function minecart.remove_nodecart(pos, node)
 	local ndef = minetest.registered_nodes[node.name]
 	local meta = M(pos)
 	local rail = meta:get_string("removed_rail")
+	local param2 = meta:get_int("removed_rail_param2")
 	if rail == "" then rail = "air" end
 	local userID = meta:get_int("userID")
 	local owner = meta:get_string("owner")
 	meta:set_string("infotext", "")
 	meta:set_string("formspec", "")
 	local cargo = ndef.get_cargo and ndef.get_cargo(pos) or {}
-	minetest.swap_node(pos, {name = rail})
+	minetest.swap_node(pos, {name = rail, param2 = param2})
 	return cargo, owner, userID
 end
 
