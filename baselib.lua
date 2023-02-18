@@ -347,6 +347,12 @@ function minecart.remove_nodecart(pos, node)
 	return cargo, owner, userID
 end
 
+function minecart.is_usable_cart(pos, node)
+	-- cart needs a rail bwelow
+	local rail = M(pos):get_string("removed_rail")
+	return minecart.is_rail(pos, rail)
+end
+
 function minecart.node_to_entity(pos, node_name, entity_name)
 	-- Remove node
 	local cargo, owner, userID = minecart.remove_nodecart(pos)

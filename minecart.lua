@@ -57,8 +57,10 @@ minetest.register_node("minecart:cart", {
 		if clicker and clicker:is_player() then
 			if M(pos):get_int("userID") ~= 0 then
 				-- enter the cart
-				local object = minecart.node_to_entity(pos, "minecart:cart", "minecart:cart_entity")
-				minecart.manage_attachment(clicker, object:get_luaentity(), true)
+				if minecart.is_usable_cart(pos, node) then
+					local object = minecart.node_to_entity(pos, "minecart:cart", "minecart:cart_entity")
+					minecart.manage_attachment(clicker, object:get_luaentity(), true)
+				end
 			else
 				minecart.show_formspec(pos, clicker)
 			end
