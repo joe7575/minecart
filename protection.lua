@@ -3,7 +3,7 @@
 	Minecart
 	========
 
-	Copyright (C) 2019-2021 Joachim Stolberg
+	Copyright (C) 2019-2023 Joachim Stolberg
 
 	MIT
 	See license.txt for more information
@@ -95,8 +95,10 @@ minetest.register_node("minecart:landmark", {
 		minecart.set_land_marker(pos, RANGE, 20)
 	end,
 
-	paramtype2 = "facedir",
+	paramtype = "light",
 	sunlight_propagates = true,
+	paramtype2 = "facedir",
+	use_texture_alpha = minecart.CLIP,
 	groups = {cracky = 3, stone = 1},
 	is_ground_content = false,
 	sounds = default.node_sound_stone_defaults(),
@@ -135,7 +137,10 @@ minetest.register_node("minecart:ballast_slope", {
 		type = "fixed",
 		fixed = {-8/16, -8/16, -8/16,  8/16, 8/16, 8/16},
 	},
+	paramtype = "light",
+	sunlight_propagates = true,
 	paramtype2 = "facedir",
+	use_texture_alpha = minecart.CLIP,
 	groups = {crumbly = 1, cracky = 3},
 	sounds = default.node_sound_stone_defaults(),
 })
@@ -157,7 +162,10 @@ minetest.register_node("minecart:ballast_ramp", {
 		type = "fixed",
 		fixed = {-8/16, -8/16, -8/16,  8/16, 8/16, 8/16},
 	},
+	paramtype = "light",
+	sunlight_propagates = true,
 	paramtype2 = "facedir",
+	use_texture_alpha = minecart.CLIP,
 	groups = {crumbly = 1, cracky = 3},
 	sounds = default.node_sound_stone_defaults(),
 })
