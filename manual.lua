@@ -14,7 +14,7 @@
 
 local MP = minetest.get_modpath("minecart")
 
-if not minetest.global_exists("techage") and
+if not minetest.get_modpath("techage") and
        minetest.global_exists("doclib") then
 
 	minetest.register_node("minecart:manual", {
